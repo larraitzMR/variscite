@@ -23,60 +23,25 @@ void printU8List(TMR_uint8List *list, int *ports) {
 	putchar(']');
 }
 
-void charToInt(char *lchar, TMR_uint8List *list)
+void getAntennaList(char *lchar, TMR_uint8List *list)
 {
 	int i= 0;;
 	char* p;
 	list->len = 0;
 	list->max = 4;
 	list->list = malloc(sizeof(list->list[0]) * list->max);
-
-	printf("chartoInt\n");
+	putchar('[');
 	for (p = strtok(lchar + 1, " "); p; p = strtok( NULL, " ")) {
-		printf("P %s\n", p);
 		int a = atoi(p);
-		printf("Num %d\n", a);
-		printf("i %d\n", i);
-		//printf("Lista %d\n", &lint[i]);
 		list->list[list->len] = a;
 		list->len++;
 		printf("%u%s", list->list[i], ((i + 1) == list->len) ? "" : ",");
 		i++;
 	}
-
-
-
-//			listaAntenas.list[l] = (uint8_t) d;
-
+	putchar(']');
+	printf("\n");
 }
 
-//void charToInt(char *lchar, int *lint)
-//{
-//	int i= 0;;
-//	char* p;
-//
-//	printf("chartoInt\n");
-//	for (p = strtok(lchar + 1, " "); p; p = strtok( NULL, " ")) {
-//		printf("P %s\n", p);
-//		int a = atoi(p);
-//		printf("Num %d\n", a);
-//		lint[i] = (uint8_t)a;
-//		printf("i %d\n", i);
-//		//printf("Lista %d\n", &lint[i]);
-//		i++;
-//	}
-////	printf("lchar: %s", lchar);
-////	printf("lchar: %s", lchar[0]);
-////	//printf("lchar: %s", lchar[0]);
-////	sscanf(lchar, "%d %d %d %d", &lint[0], &lint[1], &lint[2], &lint[3]);
-//////	int i = 0;
-////	while(lchar[i]!=0){
-////		printf("Lista char %s\n", lchar[i]);
-////		lint[i] = atoi(lchar[i]);
-////		printf("Lista int %d\n", lint[i]);
-////		i++;
-////	}
-//}
 
 void getConnectedAntennaPorts(TMR_Reader *rp, int *puertos) {
 	TMR_Status ret;
@@ -97,7 +62,7 @@ void getAntennaPorts(TMR_Reader *rp, int *p) {
 	ret = TMR_paramGet(rp, TMR_PARAM_ANTENNA_PORTLIST, &value);
 	printU8List(&value, p);
 	for (int var = 0; var < 4; ++var) {
-		printf("Puertos: %d", p[var]);
+		printf("Puertos: %d ", p[var]);
 	}
 	printf("\n");
 }
@@ -110,7 +75,7 @@ void getSelectedAntennas(TMR_Reader *rp, int *p) {
 	ret = TMR_paramGet(rp, TMR_PARAM_READ_PLAN, &plan);
 	printU8List(&plan.u.simple.antennas, p);
 	for (int var = 0; var < 4; ++var) {
-		printf("Puertos: %d", p[var]);
+		printf("Puertos: %d ", p[var]);
 	}
 	printf("\n");
 }

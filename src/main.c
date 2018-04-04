@@ -88,7 +88,7 @@ int main(void) {
 	while (1) {
 		read_udp_message(socket_fd, msg, strlen(msg));
 		printf("msg: %s\n", msg);
-
+		//TODO: hace algo mal al guardar los puertos de las antenas, verificar.
 		if (strcmp(msg, "POWER_MINMAX") == 0) {
 			dato = getParam(rp, TMR_PARAM_RADIO_POWERMAX);
 			float max = (uint16_t) dato / 100;
@@ -185,9 +185,6 @@ int main(void) {
 		} else if (strncmp(msg, "SET_SEL_ANT", 11) == 0) {
 			TMR_Status ret;
 			TMR_ReadPlan plan;
-			int i= 0;;
-			int lista[4];
-			char* p;
 			char *nuevoDato;
 			TMR_uint8List listaAntenas = { NULL, 0, 0 };
 			ret = TMR_paramGet(rp, TMR_PARAM_READ_PLAN, &plan);
@@ -195,32 +192,19 @@ int main(void) {
 			nuevoDato = (char*) malloc(sizeof(char) * (longitud + 1));
 			nuevoDato[longitud] = '\0';
 			strncpy(nuevoDato, msg + 11, longitud);
-			charToInt(nuevoDato, &listaAntenas);
-			//sscanf(nuevoDato, "%d", &i);
-			//printf("Nuevo Dato: %d\n", nuevoDato[0]);
-//			int d = atoi(nuevoDato[0]);
-//			printf("Numero: %d\n", d);
-//			int d2 = atoi(nuevoDato[1]);
-//			printf("Numero: %d\n", d2);
-			//TODO: los datos estan alojados en nuevoDato, hay que buscar la manera de recogerlos y meterlos en la lista.
-
-//			printf("Set Sel Antena: %s\n", &nuevoDato[0]);
-//			//printf("Lista: %s\n", &lista[0]);
-//			sscanf(&nuevoDato, "%d %d %d %d", &lista[0], &lista[1], &lista[2], &lista[3]);
-//			int d = atoi(nuevoDato);
-//			//printf("Numero: %d\n", i);
-//			listaAntenas.len = 0;
-//			listaAntenas.max = 4;
-//			listaAntenas.list = malloc(sizeof(listaAntenas.list[0]) * listaAntenas.max);
-////			listaAntenas.list[l] = (uint8_t) d;
-//			listaAntenas.list[listaAntenas.len] = (uint8_t) d;
-//			listaAntenas.len++;
-//
-//			printf("listaantenas: %u\n", listaAntenas.list[0]);
+			getAntennaList(nuevoDato, &listaAntenas);
 			plan.u.simple.antennas = listaAntenas;
 
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_READ_PLAN, &plan);
 			memset(msg, 0, 50);
+		} else if (strcmp(msg, "GET_INFO") == 0) {
+
+
+			enviar_udp_msg(socket_fd, selecAntenna, PARAMS_PORT);
+			memset(msg, 0, 50);
+			memset(selAnt, 0, 4);
+			memset(selecAntenna, 0, 4);
+
 		}
 	}
 
