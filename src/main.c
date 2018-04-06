@@ -37,11 +37,14 @@ int main(void) {
 	//uint8_t *antennaList = ant_buffer;
 	TMR_Reader r, *rp;
 	TMR_Status tmr_ret;
-	char powerMinMax[10];
-	char power[2];
+	TMR_Region region;
+
 	void ** dato;
 	char *msg;
-	char Ready[5] = "READY\n";
+
+	char powerMinMax[10];
+	char power[2];
+	char Ready[5] = "READY";
 	int puertos[4] = { NULL };
 	int puertosC[4] = { NULL };
 	int selAnt[4] = { NULL };
@@ -64,6 +67,71 @@ int main(void) {
 	tmr_ret = TMR_connect(rp);
 	if (tmr_ret != TMR_SUCCESS) {
 		printf("geo_rfid: ERROR CONNECTING M6E\n");
+		fflush(stdout);
+		exit(1);
+	}
+
+	//Commit region
+	region = TMR_REGION_NONE;
+	tmr_ret = TMR_paramGet(rp, TMR_PARAM_REGION_ID, &region);
+	if (tmr_ret != TMR_SUCCESS) {
+		printf("geo_rfid: ERROR SETTING REGION\n");
+		fflush(stdout);
+		exit(1);
+	}
+
+	if (TMR_REGION_NONE == region) {
+		TMR_RegionList regions;
+		TMR_Region _regionStore[32];
+		regions.list = _regionStore;
+		regions.max = sizeof(_regionStore) / sizeof(_regionStore[0]);
+		regions.len = 0;
+
+		tmr_ret = TMR_paramGet(rp, TMR_PARAM_REGION_SUPPORTEDREGIONS, &regions);
+		if (tmr_ret != TMR_SUCCESS) {
+			printf("geo_rfid: ERROR GETTING SUPPORTED REGION\n");
+			fflush(stdout);
+			exit(1);
+		}
+
+		if (regions.len < 1) {
+			if (tmr_ret != TMR_SUCCESS) {
+				printf("geo_rfid: Reader doesn't support any regions\n");
+				fflush(stdout);
+				exit(1);
+			}
+		}
+		region = regions.list[0];
+		printf("SUPPORTED REGION: %d", region);
+		tmr_ret = TMR_paramSet(rp, TMR_PARAM_REGION_ID, &region);
+		if (tmr_ret != TMR_SUCCESS) {
+			printf("geo_rfid: ERROR SETTING REGION\n");
+			fflush(stdout);
+			exit(1);
+		}
+	}
+
+	tmr_ret = TMR_paramSet(rp, TMR_PARAM_REGION_ID, &region);
+	if (tmr_ret != TMR_SUCCESS) {
+		printf("geo_rfid: ERROR SETTING SIMPLE READ PLAN\n");
+		fflush(stdout);
+		exit(1);
+	}
+
+	//Read plan: No antenna list provided since M6E supports auto-detect
+	TMR_ReadPlan plan;
+	tmr_ret = TMR_RP_init_simple(&plan, ant_count, NULL, TMR_TAG_PROTOCOL_GEN2,
+			1000);
+	if (tmr_ret != TMR_SUCCESS) {
+		printf("geo_rfid: ERROR INITIALIZING SIMPLE READ PLAN\n");
+		fflush(stdout);
+		exit(1);
+	}
+
+	//Commit read plan
+	tmr_ret = TMR_paramSet(rp, TMR_PARAM_READ_PLAN, &plan);
+	if (tmr_ret != TMR_SUCCESS) {
+		printf("geo_rfid: ERROR SETTING SIMPLE READ PLAN\n");
 		fflush(stdout);
 		exit(1);
 	}
