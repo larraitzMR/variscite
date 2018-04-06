@@ -49,6 +49,7 @@ int main(void) {
 	char puertosAnt[4];
 	char antenaCheck[1];
 	char selecAntenna[4];
+	char* infoReader[4];
 
 	//M6E reader instance
 	rp = &r;
@@ -84,11 +85,11 @@ int main(void) {
 		enviar_udp_msg(socket_fd, Ready, COMMUNICATIONS_PORT);
 		//printf("msg: %s", msg);
 	}
-
+	//TODO: hace algo mal al guardar los puertos de las antenas, verificar.
 	while (1) {
 		read_udp_message(socket_fd, msg, strlen(msg));
 		printf("msg: %s\n", msg);
-		//TODO: hace algo mal al guardar los puertos de las antenas, verificar.
+
 		if (strcmp(msg, "POWER_MINMAX") == 0) {
 			dato = getParam(rp, TMR_PARAM_RADIO_POWERMAX);
 			float max = (uint16_t) dato / 100;
@@ -198,12 +199,28 @@ int main(void) {
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_READ_PLAN, &plan);
 			memset(msg, 0, 50);
 		} else if (strcmp(msg, "GET_INFO") == 0) {
+			char info[22];
 
+			getReaderInfo(rp, TMR_PARAM_VERSION_MODEL, info);
+			printf("InfoReader: %s\n", info);
+			enviar_udp_msg(socket_fd, info, PARAMS_PORT);
+			memset(info, 0, 50);
 
-			enviar_udp_msg(socket_fd, selecAntenna, PARAMS_PORT);
-			memset(msg, 0, 50);
-			memset(selAnt, 0, 4);
-			memset(selecAntenna, 0, 4);
+			getReaderInfo(rp, TMR_PARAM_VERSION_HARDWARE, info);
+			printf("InfoReader: %s\n", info);
+			enviar_udp_msg(socket_fd, info, PARAMS_PORT);
+			memset(info, 0, 50);
+
+			getReaderInfo(rp, TMR_PARAM_VERSION_SERIAL, info);
+			printf("InfoReader: %s\n", info);
+			enviar_udp_msg(socket_fd, info, PARAMS_PORT);
+			memset(info, 0, 50);
+
+			getReaderInfo(rp, TMR_PARAM_VERSION_SOFTWARE, info);
+			printf("InfoReader: %s\n", info);
+			enviar_udp_msg(socket_fd, info, PARAMS_PORT);
+			memset(info, 0, 50);
+		} else if (strcmp(msg, "START_READING") == 0) {
 
 		}
 	}

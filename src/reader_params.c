@@ -80,6 +80,21 @@ void getSelectedAntennas(TMR_Reader *rp, int *p) {
 	printf("\n");
 }
 
+void getReaderInfo(TMR_Reader *rp, TMR_Param key, char *inf) {
+	TMR_String info;
+	TMR_Status ret;
+	//char inf[1];
+    char stringValue[256];
+    info.max = sizeof(stringValue);
+    info.value = stringValue;
+
+	ret = TMR_paramGet(rp, key, &info);
+	if (TMR_SUCCESS != ret) {
+		printf("Error getting Reader Info: %s\n", ret);
+	}
+	strcpy(inf, info.value);
+}
+
 void **getParam(TMR_Reader *rp, TMR_Param key) {
 	TMR_Status ret;
 
