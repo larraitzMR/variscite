@@ -68,6 +68,16 @@ int configure_udp_socket(int port){
 	return descriptor;
 } // CONFIGURE_UDP_SOCKET END
 
+void enviar_udp_msg(int socket_fd, char *data, int port) {
+	int errors = 0;
+	if (send_udp_msg(socket_fd, "192.168.1.48", port, data, strlen(data)) < 0) {
+#ifdef RFID_DEBUG
+		printf("geo_rfid: ERROR SENDING UDP MESSAGE\n");
+		fflush(stdout);
+#endif
+		errors++;
+	}
+}
 
 /* Send UDP message to remote receiver */
 int send_udp_msg(int sock_descriptor, char *ip, int port, char *data, short len){
@@ -96,7 +106,7 @@ int send_udp_msg(int sock_descriptor, char *ip, int port, char *data, short len)
 	}
 
 	//Checksum
-	message[len] = network_checksum(message,len);
+	//message[len] = network_checksum(message,len);
 
 
 	//DEBUG

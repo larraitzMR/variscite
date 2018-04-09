@@ -10,7 +10,7 @@
  be reported to geo_communication module, which will be in
  charge of cloud communications
 
- Notes           : -lpthread flag required for compiling.
+ Notes		 : -lpthread flag required for compiling.
  ============================================================================
  */
 
@@ -18,7 +18,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <inttypes.h>
 #include "m6e/tm_reader.h"
 #include "network.h"
 #include "geo_rfid.h"
@@ -29,18 +28,23 @@
 //  GLOBAL VARIABLES
 //
 // =======================================================================
-//const uint8_t ant_buffer[] = {1, 2, 3, 4};
 uint8_t ant_buffer[] = { };
 uint8_t ant_count = 0;
 
 int main(void) {
-	//uint8_t *antennaList = ant_buffer;
 	TMR_Reader r, *rp;
 	TMR_Status tmr_ret;
 	TMR_Region region;
 
+	int32_t tag_read_count; //Counter for number of read tags
+	TMR_TagReadData* tagReads;
+	int i;
+	int errors = 0;
+	char keep_alive_msg[] = { '*', 2, CO_KEEPALIVE, ID_GEORFID, '\0' };
+	char rfid_report_msg[64];
+
 	void ** dato;
-	char *msg;
+	char msg[25];
 
 	char powerMinMax[10];
 	char power[2];
@@ -146,14 +150,19 @@ int main(void) {
 		exit(1);
 	}
 
+//	send_udp_msg(socket_fd, "192.168.1.48", COMMUNICATIONS_PORT, Ready, strlen(Ready));
 	enviar_udp_msg(socket_fd, Ready, COMMUNICATIONS_PORT);
 	while (strcmp(msg, "CONECTADO") != 0) {
 		read_udp_message(socket_fd, msg, strlen(msg));
+//		send_udp_msg(socket_fd, "192.168.1.48", COMMUNICATIONS_PORT, Ready,	strlen(Ready));
 		enviar_udp_msg(socket_fd, Ready, COMMUNICATIONS_PORT);
 	}
+
 	//TODO: en la funcion send_udp_msg esta quitado el checksum para que vaya bien
 	//TODO: hace algo mal al guardar los puertos de las antenas, verificar.
+
 	while (1) {
+
 		read_udp_message(socket_fd, msg, strlen(msg));
 		printf("msg: %s\n", msg);
 
@@ -179,7 +188,6 @@ int main(void) {
 
 			enviar_udp_msg(socket_fd, puertosConect, PARAMS_PORT);
 			bzero(puertosConect, sizeof(puertosConect));
-			//memset(msg, 0, 50);
 
 		} else if (strcmp(msg, "ANT_PORTS") == 0) {
 			getAntennaPorts(rp, puertos);
@@ -191,7 +199,6 @@ int main(void) {
 
 			enviar_udp_msg(socket_fd, puertosAnt, PARAMS_PORT);
 			bzero(puertosAnt, sizeof(puertosAnt));
-			//memset(msg, 0, 50);
 
 		} else if (strcmp(msg, "IS_ANT_CHECK_PORT_EN") == 0) {
 			dato = getParam(rp, TMR_PARAM_ANTENNA_CHECKPORT);
@@ -227,7 +234,6 @@ int main(void) {
 			power[1] = dec;
 			enviar_udp_msg(socket_fd, power, PARAMS_PORT);
 			bzero(power, sizeof(power));
-			//memset(msg, 0, 50);
 
 		} else if (strncmp(msg, "SET_POWER", 9) == 0) {
 			int longitud = strlen(msg) - 9;
@@ -248,8 +254,6 @@ int main(void) {
 			selecAntenna[3] = selAnt[3];
 
 			enviar_udp_msg(socket_fd, selecAntenna, PARAMS_PORT);
-			//memset(msg, 0, 50);
-			//memset(selecAntenna, 0, 4);
 			bzero(selecAntenna, sizeof(selecAntenna));
 
 		} else if (strncmp(msg, "SET_SEL_ANT", 11) == 0) {
@@ -266,7 +270,6 @@ int main(void) {
 			plan.u.simple.antennas = listaAntenas;
 
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_READ_PLAN, &plan);
-//			memset(msg, 0, 50);
 
 		} else if (strcmp(msg, "GET_INFO") == 0) {
 			char info[22];
@@ -274,27 +277,88 @@ int main(void) {
 			getReaderInfo(rp, TMR_PARAM_VERSION_MODEL, info);
 			printf("InfoReader: %s\n", info);
 			enviar_udp_msg(socket_fd, info, PARAMS_PORT);
-//			memset(info, 0, 50);
 			bzero(info, sizeof(info));
 
 			getReaderInfo(rp, TMR_PARAM_VERSION_HARDWARE, info);
 			printf("InfoReader: %s\n", info);
 			enviar_udp_msg(socket_fd, info, PARAMS_PORT);
-//			memset(info, 0, 50);
 			bzero(info, sizeof(info));
 
 			getReaderInfo(rp, TMR_PARAM_VERSION_SERIAL, info);
 			printf("InfoReader: %s\n", info);
 			enviar_udp_msg(socket_fd, info, PARAMS_PORT);
-//			memset(info, 0, 50);
 			bzero(info, sizeof(info));
 
 			getReaderInfo(rp, TMR_PARAM_VERSION_SOFTWARE, info);
 			printf("InfoReader: %s\n", info);
 			enviar_udp_msg(socket_fd, info, PARAMS_PORT);
 			bzero(info, sizeof(info));
-		} else if (strcmp(msg, "START_READING") == 0) { }
-		bzero(msg, 100);
+		} else if (strcmp(msg, "START_READING") == 0) {
+			//Send keep-alive to geo-control
+			// MESSAGE FORMAT:
+			// * | MSG_LEN(1b) | CO(1b) | PROCESS_ID(1B) | CHECKSUM(1b)
+			// CHECKSUM is calculated by send_udp_msg() function
+			if (send_udp_msg(socket_fd, "192.168.1.48", CONTROL_PORT,
+					keep_alive_msg, strlen(keep_alive_msg)) < 0) {
+#ifdef RFID_DEBUG
+				printf("geo_rfid: ERROR SENDING KEEPALIVE MESSAGE\n");
+				fflush(stdout);
+#endif
+				errors++;
+			}
+
+			//Init tag count
+			tag_read_count = 0;
+
+			//Read tags
+			tmr_ret = TMR_readIntoArray(rp, 500, &tag_read_count, &tagReads);
+			if (tmr_ret != TMR_SUCCESS) {
+				printf("geo_rfid: ERROR READING TAGS INTO ARRAY");
+				fflush(stdout);
+				errors++;
+			} else {
+				for (i = 0; i < tag_read_count; i++) {
+					TMR_TagReadData* trd = &tagReads[i];
+					char epcStr[128];
+					TMR_bytesToHex(trd->tag.epc, trd->tag.epcByteCount, epcStr);
+					printf("%s", epcStr);
+					printf(" ant:%d", trd->antenna);
+					printf(" count:%d \n", trd->readCount);
+					fflush(stdout);
+					//Send antena and epc to geo_communications
+					// MESSAGE FORMAT:
+					// * | MSG_LEN(1b) | CO(1b) | ANTENNA(1B) | EPC(NB) | CHECKSUM(1b)
+					// CHECKSUM is calculated by send_udp_msg() function
+					bzero(rfid_report_msg, sizeof(rfid_report_msg));
+					rfid_report_msg[0] = '*';
+					rfid_report_msg[1] = strlen(epcStr) + 1 + 1;
+					rfid_report_msg[2] = CO_RFID_REPORT;
+					rfid_report_msg[3] = trd->antenna;
+					int j = 0;
+					for (j = 0; j < strlen(epcStr); j++) {
+						rfid_report_msg[4 + j] = epcStr[j];
+					}
+					if (send_udp_msg(socket_fd, "192.168.1.48",	COMMUNICATIONS_PORT, rfid_report_msg, strlen(epcStr) + 4) < 0) {
+#ifdef RFID_DEBUG
+						printf("geo_rfid: ERROR SENDING RFID REPORT\n");
+						fflush(stdout);
+#endif
+						errors++;
+					}
+				}
+			}
+
+			//Check error count
+			if (errors > MAX_ERRORS) {
+#ifdef RFID_DEBUG
+				printf("geo_rfid: MAX_ERRORS REACHED. CLOSING geo_rfid\n");
+				fflush(stdout);
+#endif
+				break;
+			}
+		}
+		//memset(msg, 0, 50);
+
 	}
 
 	TMR_destroy(rp);
