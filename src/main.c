@@ -45,14 +45,13 @@ int main(void) {
 	char powerMinMax[10];
 	char power[2];
 	char Ready[5] = "READY";
-	int puertos[4] = { NULL };
-	int puertosC[4] = { NULL };
-	int selAnt[4] = { NULL };
+	int puertos[4];
+	int puertosC[4];
+	int selAnt[4];
 	char puertosConect[4];
 	char puertosAnt[4];
 	char antenaCheck[1];
 	char selecAntenna[4];
-	char* infoReader[4];
 
 	//M6E reader instance
 	rp = &r;
@@ -151,8 +150,9 @@ int main(void) {
 	while (strcmp(msg, "CONECTADO") != 0) {
 		read_udp_message(socket_fd, msg, strlen(msg));
 		enviar_udp_msg(socket_fd, Ready, COMMUNICATIONS_PORT);
-		//printf("msg: %s", msg);
+
 	}
+	//TODO: en la funcion send_udp_msg esta quitado el checksum para que vaya bien
 	//TODO: hace algo mal al guardar los puertos de las antenas, verificar.
 	while (1) {
 		read_udp_message(socket_fd, msg, strlen(msg));
@@ -168,7 +168,6 @@ int main(void) {
 			powerMinMax[1] = min;
 
 			enviar_udp_msg(socket_fd, powerMinMax, PARAMS_PORT);
-			memset(msg, 0, 50);
 
 		} else if (strcmp(msg, "CON_ANT_PORTS") == 0) {
 			getConnectedAntennaPorts(rp, puertosC);
@@ -296,16 +295,3 @@ int main(void) {
 	TMR_destroy(rp);
 	return EXIT_SUCCESS;
 } // MAIN END
-
-
-void enviar_udp_msg(int socket_fd, char *data, int port) {
-	int errors = 0;
-	if (send_udp_msg(socket_fd, "192.168.1.46", port, data, strlen(data)) < 0) {
-#ifdef RFID_DEBUG
-		printf("geo_rfid: ERROR SENDING UDP MESSAGE\n");
-		fflush(stdout);
-#endif
-		errors++;
-	}
-
-}

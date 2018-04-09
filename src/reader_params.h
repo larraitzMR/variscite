@@ -13,6 +13,10 @@
 #include "network.h"
 #include "geo_rfid.h"
 
-void get_MaxMinPower(TMR_Reader *rp, uint16_t *powerMin, uint16_t *powerMax);
-void getoneparam(TMR_Reader *rp, TMR_Param key);
+void printU8List(TMR_uint8List *list, int *ports);
+void getAntennaList(char *lchar, TMR_uint8List *list);
+void getConnectedAntennaPorts(TMR_Reader *rp, int *puertos);
+void getAntennaPorts(TMR_Reader *rp, int *p);
+void getSelectedAntennas(TMR_Reader *rp, int *p);
+void getReaderInfo(TMR_Reader *rp, TMR_Param key, char *inf);
 void **getParam(TMR_Reader *rp, TMR_Param key);
