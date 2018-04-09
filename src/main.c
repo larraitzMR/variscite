@@ -150,7 +150,6 @@ int main(void) {
 	while (strcmp(msg, "CONECTADO") != 0) {
 		read_udp_message(socket_fd, msg, strlen(msg));
 		enviar_udp_msg(socket_fd, Ready, COMMUNICATIONS_PORT);
-
 	}
 	//TODO: en la funcion send_udp_msg esta quitado el checksum para que vaya bien
 	//TODO: hace algo mal al guardar los puertos de las antenas, verificar.
@@ -168,6 +167,7 @@ int main(void) {
 			powerMinMax[1] = min;
 
 			enviar_udp_msg(socket_fd, powerMinMax, PARAMS_PORT);
+			bzero(powerMinMax, sizeof(powerMinMax));
 
 		} else if (strcmp(msg, "CON_ANT_PORTS") == 0) {
 			getConnectedAntennaPorts(rp, puertosC);
@@ -178,8 +178,8 @@ int main(void) {
 			puertosConect[3] = puertosC[3];
 
 			enviar_udp_msg(socket_fd, puertosConect, PARAMS_PORT);
-			memset(msg, 0, 50);
-			memset(puertosC, 0, 4);
+			bzero(puertosConect, sizeof(puertosConect));
+			//memset(msg, 0, 50);
 
 		} else if (strcmp(msg, "ANT_PORTS") == 0) {
 			getAntennaPorts(rp, puertos);
@@ -190,14 +190,14 @@ int main(void) {
 			puertosAnt[3] = puertos[3];
 
 			enviar_udp_msg(socket_fd, puertosAnt, PARAMS_PORT);
-			memset(msg, 0, 50);
-			memset(puertos, 0, 4);
+			bzero(puertosAnt, sizeof(puertosAnt));
+			//memset(msg, 0, 50);
 
 		} else if (strcmp(msg, "IS_ANT_CHECK_PORT_EN") == 0) {
 			dato = getParam(rp, TMR_PARAM_ANTENNA_CHECKPORT);
 			antenaCheck[0] = (int) dato;
 			enviar_udp_msg(socket_fd, antenaCheck, PARAMS_PORT);
-			memset(msg, 0, 50);
+			bzero(antenaCheck, sizeof(antenaCheck));
 
 			//TODO: despues de esto comprobar que se puede leer con cualquier antena
 
@@ -217,6 +217,7 @@ int main(void) {
 			}
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_ANTENNA_CHECKPORT, &value);
 			//TODO: despues de esto comprobar que se puede leer con cualquier antena
+
 		} else if (strcmp(msg, "GET_POWER") == 0) {
 			dato = getParam(rp, TMR_PARAM_RADIO_READPOWER);
 			int pow = (uint32_t) dato / 100;
@@ -225,7 +226,8 @@ int main(void) {
 			power[0] = pow;
 			power[1] = dec;
 			enviar_udp_msg(socket_fd, power, PARAMS_PORT);
-			memset(msg, 0, 50);
+			bzero(power, sizeof(power));
+			//memset(msg, 0, 50);
 
 		} else if (strncmp(msg, "SET_POWER", 9) == 0) {
 			int longitud = strlen(msg) - 9;
@@ -246,9 +248,9 @@ int main(void) {
 			selecAntenna[3] = selAnt[3];
 
 			enviar_udp_msg(socket_fd, selecAntenna, PARAMS_PORT);
-			memset(msg, 0, 50);
-			memset(selAnt, 0, 4);
-			memset(selecAntenna, 0, 4);
+			//memset(msg, 0, 50);
+			//memset(selecAntenna, 0, 4);
+			bzero(selecAntenna, sizeof(selecAntenna));
 
 		} else if (strncmp(msg, "SET_SEL_ANT", 11) == 0) {
 			TMR_Status ret;
@@ -264,32 +266,35 @@ int main(void) {
 			plan.u.simple.antennas = listaAntenas;
 
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_READ_PLAN, &plan);
-			memset(msg, 0, 50);
+//			memset(msg, 0, 50);
+
 		} else if (strcmp(msg, "GET_INFO") == 0) {
 			char info[22];
 
 			getReaderInfo(rp, TMR_PARAM_VERSION_MODEL, info);
 			printf("InfoReader: %s\n", info);
 			enviar_udp_msg(socket_fd, info, PARAMS_PORT);
-			memset(info, 0, 50);
+//			memset(info, 0, 50);
+			bzero(info, sizeof(info));
 
 			getReaderInfo(rp, TMR_PARAM_VERSION_HARDWARE, info);
 			printf("InfoReader: %s\n", info);
 			enviar_udp_msg(socket_fd, info, PARAMS_PORT);
-			memset(info, 0, 50);
+//			memset(info, 0, 50);
+			bzero(info, sizeof(info));
 
 			getReaderInfo(rp, TMR_PARAM_VERSION_SERIAL, info);
 			printf("InfoReader: %s\n", info);
 			enviar_udp_msg(socket_fd, info, PARAMS_PORT);
-			memset(info, 0, 50);
+//			memset(info, 0, 50);
+			bzero(info, sizeof(info));
 
 			getReaderInfo(rp, TMR_PARAM_VERSION_SOFTWARE, info);
 			printf("InfoReader: %s\n", info);
 			enviar_udp_msg(socket_fd, info, PARAMS_PORT);
-			memset(info, 0, 50);
-		} else if (strcmp(msg, "START_READING") == 0) {
-
-		}
+			bzero(info, sizeof(info));
+		} else if (strcmp(msg, "START_READING") == 0) { }
+		bzero(msg, 100);
 	}
 
 	TMR_destroy(rp);
