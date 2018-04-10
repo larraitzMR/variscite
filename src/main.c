@@ -150,11 +150,9 @@ int main(void) {
 		exit(1);
 	}
 
-//	send_udp_msg(socket_fd, "192.168.1.48", COMMUNICATIONS_PORT, Ready, strlen(Ready));
 	enviar_udp_msg(socket_fd, Ready, COMMUNICATIONS_PORT);
 	while (strcmp(msg, "CONECTADO") != 0) {
 		read_udp_message(socket_fd, msg, strlen(msg));
-//		send_udp_msg(socket_fd, "192.168.1.48", COMMUNICATIONS_PORT, Ready,	strlen(Ready));
 		enviar_udp_msg(socket_fd, Ready, COMMUNICATIONS_PORT);
 	}
 
@@ -298,8 +296,7 @@ int main(void) {
 			// MESSAGE FORMAT:
 			// * | MSG_LEN(1b) | CO(1b) | PROCESS_ID(1B) | CHECKSUM(1b)
 			// CHECKSUM is calculated by send_udp_msg() function
-			if (send_udp_msg(socket_fd, "192.168.1.48", CONTROL_PORT,
-					keep_alive_msg, strlen(keep_alive_msg)) < 0) {
+			if (send_udp_msg_checksum(socket_fd, "192.168.1.48", PARAMS_PORT, keep_alive_msg, strlen(keep_alive_msg)) < 0) {
 #ifdef RFID_DEBUG
 				printf("geo_rfid: ERROR SENDING KEEPALIVE MESSAGE\n");
 				fflush(stdout);
@@ -338,13 +335,14 @@ int main(void) {
 					for (j = 0; j < strlen(epcStr); j++) {
 						rfid_report_msg[4 + j] = epcStr[j];
 					}
-					if (send_udp_msg(socket_fd, "192.168.1.48",	COMMUNICATIONS_PORT, rfid_report_msg, strlen(epcStr) + 4) < 0) {
+					if (send_udp_msg_checksum(socket_fd, "192.168.1.48",	PARAMS_PORT, rfid_report_msg, strlen(epcStr) + 4) < 0) {
 #ifdef RFID_DEBUG
 						printf("geo_rfid: ERROR SENDING RFID REPORT\n");
 						fflush(stdout);
 #endif
 						errors++;
 					}
+
 				}
 			}
 

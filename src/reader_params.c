@@ -70,7 +70,6 @@ void getAntennaPorts(TMR_Reader *rp, int *p) {
 void getSelectedAntennas(TMR_Reader *rp, int *p) {
 	TMR_Status ret;
 	//TMR_uint8List value;
-	uint8_t valueList[64];
 	TMR_ReadPlan plan;
 	ret = TMR_paramGet(rp, TMR_PARAM_READ_PLAN, &plan);
 	printU8List(&plan.u.simple.antennas, p);

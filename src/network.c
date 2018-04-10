@@ -126,6 +126,53 @@ int send_udp_msg(int sock_descriptor, char *ip, int port, char *data, short len)
 	return 0;
 } // SEND_UDP_MSG END
 
+/* Send UDP message to remote receiver */
+int send_udp_msg_checksum(int sock_descriptor, char *ip, int port, char *data, short len){
+	struct sockaddr_in remote_socket; //Keeps connection information on remote side
+	char message[64];
+	short i;
+
+	bzero(&remote_socket,sizeof(remote_socket));
+
+	//Configure message receiver address
+	remote_socket.sin_family = AF_INET;
+	remote_socket.sin_port = htons(port);
+	if (inet_aton(ip, &remote_socket.sin_addr) == 0){
+	    return -1;
+	}
+
+	// MESSAGE FORMAT:
+	// * | MSG_LEN(1b) | CO(1b) | DATA(Nb) | CHECKSUM(1b)
+
+	//Empty message
+	bzero(message,sizeof(message));
+
+	//Data
+	for (i=0;i<len;i++){
+		message[i] = data[i];
+	}
+
+	//Checksum
+	message[len] = network_checksum(message,len);
+
+
+	//DEBUG
+	#ifdef NETWORK_DEBUG
+	for (i=0; i<len+1; i++){
+		printf("%02x:",(unsigned char)message[i]);
+	}
+	printf("\n");
+	fflush(stdout);
+	#endif
+
+	//Send message
+	if (sendto(sock_descriptor,message, len+1, 0, (struct sockaddr *)&remote_socket, sizeof(remote_socket)) < 0){
+		return -1;
+	}
+
+	return 0;
+} // SEND_UDP_MSG END
+
 /* Read (and parse) messages from UDP socket */
 int read_udp_message(int sock_descriptor, char *message, char len){
 	struct sockaddr_in remote_socket; //Keeps connection information on client side
