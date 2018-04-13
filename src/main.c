@@ -104,13 +104,13 @@ int main(void) {
 			}
 		}
 		region = regions.list[0];
-		printf("SUPPORTED REGION: %d", region);
-		tmr_ret = TMR_paramSet(rp, TMR_PARAM_REGION_ID, &region);
-		if (tmr_ret != TMR_SUCCESS) {
-			printf("geo_rfid: ERROR SETTING REGION\n");
-			fflush(stdout);
-			exit(1);
-		}
+//		printf("SUPPORTED REGION: %d", region);
+//		tmr_ret = TMR_paramSet(rp, TMR_PARAM_REGION_ID, &region);
+//		if (tmr_ret != TMR_SUCCESS) {
+//			printf("geo_rfid: ERROR SETTING REGION\n");
+//			fflush(stdout);
+//			exit(1);
+//		}
 	}
 
 	tmr_ret = TMR_paramSet(rp, TMR_PARAM_REGION_ID, &region);
@@ -156,7 +156,6 @@ int main(void) {
 	}
 
 	//TODO: en la funcion send_udp_msg esta quitado el checksum para que vaya bien
-	//TODO: hace algo mal al guardar los puertos de las antenas, verificar.
 
 	while (1) {
 
@@ -185,6 +184,7 @@ int main(void) {
 
 			enviar_udp_msg(socket_fd, puertosConect, PARAMS_PORT);
 			bzero(puertosConect, sizeof(puertosConect));
+			bzero(puertosC, sizeof(puertosC));
 
 		} else if (strcmp(msg, "ANT_PORTS") == 0) {
 			getAntennaPorts(rp, puertos);
@@ -196,6 +196,7 @@ int main(void) {
 
 			enviar_udp_msg(socket_fd, puertosAnt, PARAMS_PORT);
 			bzero(puertosAnt, sizeof(puertosAnt));
+			bzero(puertos, sizeof(puertos));
 
 		} else if (strcmp(msg, "IS_ANT_CHECK_PORT_EN") == 0) {
 			dato = getParam(rp, TMR_PARAM_ANTENNA_CHECKPORT);
@@ -252,13 +253,13 @@ int main(void) {
 
 			enviar_udp_msg(socket_fd, selecAntenna, PARAMS_PORT);
 			bzero(selecAntenna, sizeof(selecAntenna));
+			bzero(selAnt, sizeof(selAnt));
 
 		} else if (strncmp(msg, "SET_SEL_ANT", 11) == 0) {
-			TMR_Status ret;
 			TMR_ReadPlan plan;
 			char *nuevoDato;
 			TMR_uint8List listaAntenas = { NULL, 0, 0 };
-			ret = TMR_paramGet(rp, TMR_PARAM_READ_PLAN, &plan);
+			tmr_ret = TMR_paramGet(rp, TMR_PARAM_READ_PLAN, &plan);
 			int longitud = strlen(msg) - 11;
 			nuevoDato = (char*) malloc(sizeof(char) * (longitud + 1));
 			nuevoDato[longitud] = '\0';
@@ -352,7 +353,7 @@ int main(void) {
 			} else if (strcmp(nuevo, "B") == 0) {
 				value = 1;
 			} else if (strcmp(nuevo, "AB") == 0) {
-				value = 2;a
+				value = 2;
 			}
 			printf("Value: %d\n", value);
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_GEN2_TARGET, &value);
