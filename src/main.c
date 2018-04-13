@@ -9,7 +9,6 @@
  order to read RFID tags in the 868 MHz band. TAGs read must
  be reported to geo_communication module, which will be in
  charge of cloud communications
-
  Notes		 : -lpthread flag required for compiling.
  ============================================================================
  */
@@ -35,7 +34,6 @@ int main(void) {
 	TMR_Reader r, *rp;
 	TMR_Status tmr_ret;
 	TMR_Region region;
-	TMR_RegionList regions;
 
 	int32_t tag_read_count; //Counter for number of read tags
 	TMR_TagReadData* tagReads;
@@ -46,10 +44,10 @@ int main(void) {
 
 	void ** dato;
 	char msg[25];
-	char Ready[5] = "READY";
 
 	char powerMinMax[10];
 	char power[2];
+	char Ready[5] = "READY";
 	int puertos[4];
 	int puertosC[4];
 	int selAnt[4];
@@ -85,6 +83,7 @@ int main(void) {
 	}
 
 	if (TMR_REGION_NONE == region) {
+		TMR_RegionList regions;
 		TMR_Region _regionStore[32];
 		regions.list = _regionStore;
 		regions.max = sizeof(_regionStore) / sizeof(_regionStore[0]);
@@ -106,17 +105,17 @@ int main(void) {
 		}
 		region = regions.list[0];
 		printf("SUPPORTED REGION: %d", region);
-//		tmr_ret = TMR_paramSet(rp, TMR_PARAM_REGION_ID, &region);
-//		if (tmr_ret != TMR_SUCCESS) {
-//			printf("geo_rfid: ERROR SETTING REGION\n");
-//			fflush(stdout);
-//			exit(1);
-//		}
+		tmr_ret = TMR_paramSet(rp, TMR_PARAM_REGION_ID, &region);
+		if (tmr_ret != TMR_SUCCESS) {
+			printf("geo_rfid: ERROR SETTING REGION\n");
+			fflush(stdout);
+			exit(1);
+		}
 	}
 
 	tmr_ret = TMR_paramSet(rp, TMR_PARAM_REGION_ID, &region);
 	if (tmr_ret != TMR_SUCCESS) {
-		printf("geo_rfid: ERROR SETTING REGION\n");
+		printf("geo_rfid: ERROR SETTING SIMPLE READ PLAN\n");
 		fflush(stdout);
 		exit(1);
 	}
@@ -157,12 +156,12 @@ int main(void) {
 	}
 
 	//TODO: en la funcion send_udp_msg esta quitado el checksum para que vaya bien
+	//TODO: hace algo mal al guardar los puertos de las antenas, verificar.
 
 	while (1) {
 
 		read_udp_message(socket_fd, msg, strlen(msg));
 		printf("msg: %s\n", msg);
-		//fprintf(f,"msg: %s\n", msg);
 
 		if (strcmp(msg, "POWER_MINMAX") == 0) {
 			dato = getParam(rp, TMR_PARAM_RADIO_POWERMAX);
@@ -186,7 +185,6 @@ int main(void) {
 
 			enviar_udp_msg(socket_fd, puertosConect, PARAMS_PORT);
 			bzero(puertosConect, sizeof(puertosConect));
-			bzero(puertosConect, sizeof(puertosC));
 
 		} else if (strcmp(msg, "ANT_PORTS") == 0) {
 			getAntennaPorts(rp, puertos);
@@ -198,7 +196,6 @@ int main(void) {
 
 			enviar_udp_msg(socket_fd, puertosAnt, PARAMS_PORT);
 			bzero(puertosAnt, sizeof(puertosAnt));
-			bzero(puertos, sizeof(puertos));
 
 		} else if (strcmp(msg, "IS_ANT_CHECK_PORT_EN") == 0) {
 			dato = getParam(rp, TMR_PARAM_ANTENNA_CHECKPORT);
@@ -255,7 +252,6 @@ int main(void) {
 
 			enviar_udp_msg(socket_fd, selecAntenna, PARAMS_PORT);
 			bzero(selecAntenna, sizeof(selecAntenna));
-			bzero(selAnt, sizeof(selAnt));
 
 		} else if (strncmp(msg, "SET_SEL_ANT", 11) == 0) {
 			TMR_Status ret;
@@ -267,7 +263,6 @@ int main(void) {
 			nuevoDato = (char*) malloc(sizeof(char) * (longitud + 1));
 			nuevoDato[longitud] = '\0';
 			strncpy(nuevoDato, msg + 11, longitud);
-			printf("SELECTED ANTENNAS: %s\n", nuevoDato);
 			getAntennaList(nuevoDato, &listaAntenas);
 			plan.u.simple.antennas = listaAntenas;
 
@@ -299,31 +294,31 @@ int main(void) {
 
 			dato = getParam(rp, TMR_PARAM_REGION_ID);
 			printf("REGION: %s\n", dato);
-			enviar_udp_msg(socket_fd, (char *)dato, PARAMS_PORT);
+			enviar_udp_msg(socket_fd, (char *) dato, PARAMS_PORT);
 
 			dato = getParam(rp, TMR_PARAM_GEN2_TARI);
 			printf("TARI: %s\n", dato);
-			enviar_udp_msg(socket_fd, (char *)dato, PARAMS_PORT);
+			enviar_udp_msg(socket_fd, (char *) dato, PARAMS_PORT);
 
 			dato = getParam(rp, TMR_PARAM_GEN2_BLF);
 			printf("BLF: %s\n", dato);
-			enviar_udp_msg(socket_fd, (char *)dato, PARAMS_PORT);
+			enviar_udp_msg(socket_fd, (char *) dato, PARAMS_PORT);
 
 			dato = getParam(rp, TMR_PARAM_GEN2_TAGENCODING);
 			printf("ENCONDING: %s\n", dato);
-			enviar_udp_msg(socket_fd, (char *)dato, PARAMS_PORT);
+			enviar_udp_msg(socket_fd, (char *) dato, PARAMS_PORT);
 
 			dato = getParam(rp, TMR_PARAM_GEN2_Q);
 			printf("Q: %s\n", dato);
-			enviar_udp_msg(socket_fd, (char *)dato, PARAMS_PORT);
+			enviar_udp_msg(socket_fd, (char *) dato, PARAMS_PORT);
 
 			dato = getParam(rp, TMR_PARAM_GEN2_SESSION);
 			printf("SESION: %s\n", dato);
-			enviar_udp_msg(socket_fd, (char *)dato, PARAMS_PORT);
+			enviar_udp_msg(socket_fd, (char *) dato, PARAMS_PORT);
 
 			dato = getParam(rp, TMR_PARAM_GEN2_TARGET);
 			printf("TARGET: %s\n", dato);
-			enviar_udp_msg(socket_fd, (char *)dato, PARAMS_PORT);
+			enviar_udp_msg(socket_fd, (char *) dato, PARAMS_PORT);
 
 		} else if (strcmp(msg, "SET_REGION") == 0) {
 
@@ -335,7 +330,7 @@ int main(void) {
 
 		} else if (strcmp(msg, "SET_Q") == 0) {
 
-		} else if (strncmp(msg, "SET_SESSION", 11 ) == 0) {
+		} else if (strncmp(msg, "SET_SESSION", 11) == 0) {
 			int longitud = strlen(msg) - 12;
 			char *nuevo = (char*) malloc(sizeof(char) * (longitud + 1));
 			nuevo[longitud] = '\0';
@@ -352,22 +347,22 @@ int main(void) {
 			strncpy(nuevo, msg + 11, longitud);
 			printf("TARGET: %s\n", nuevo);
 			int32_t value;
-			if(strcmp(nuevo, "A") == 0){
+			if (strcmp(nuevo, "A") == 0) {
 				value = 0;
-			} else if (strcmp(nuevo, "B") == 0){
+			} else if (strcmp(nuevo, "B") == 0) {
 				value = 1;
-			} else if (strcmp(nuevo, "AB") == 0){
-				value = 2;
+			} else if (strcmp(nuevo, "AB") == 0) {
+				value = 2;a
 			}
 			printf("Value: %d\n", value);
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_GEN2_TARGET, &value);
-
-		}else if (strcmp(msg, "START_READING") == 0) {
+		} else if (strcmp(msg, "START_READING") == 0) {
 			//Send keep-alive to geo-control
 			// MESSAGE FORMAT:
 			// * | MSG_LEN(1b) | CO(1b) | PROCESS_ID(1B) | CHECKSUM(1b)
 			// CHECKSUM is calculated by send_udp_msg() function
-			if (send_udp_msg_checksum(socket_fd, "192.168.1.48", PARAMS_PORT, keep_alive_msg, strlen(keep_alive_msg)) < 0) {
+			if (send_udp_msg_checksum(socket_fd, "192.168.1.50", PARAMS_PORT,
+					keep_alive_msg, strlen(keep_alive_msg)) < 0) {
 #ifdef RFID_DEBUG
 				printf("geo_rfid: ERROR SENDING KEEPALIVE MESSAGE\n");
 				fflush(stdout);
@@ -387,26 +382,28 @@ int main(void) {
 			} else {
 				for (i = 0; i < tag_read_count; i++) {
 					TMR_TagReadData* trd = &tagReads[i];
-					printf("ESTOY EN EL FOR\n");
 					char epcStr[128];
 					TMR_bytesToHex(trd->tag.epc, trd->tag.epcByteCount, epcStr);
 					printf("%s", epcStr);
-					printf("ant:%d", trd->antenna);
-					printf("count:%d \n", trd->readCount);
+					printf(" ant:%d", trd->antenna);
+					printf(" count:%d \n", trd->readCount);
 					fflush(stdout);
 					//Send antena and epc to geo_communications
 					// MESSAGE FORMAT:
 					// * | MSG_LEN(1b) | CO(1b) | ANTENNA(1B) | EPC(NB) | CHECKSUM(1b)
 					// CHECKSUM is calculated by send_udp_msg() function
 					bzero(rfid_report_msg, sizeof(rfid_report_msg));
-//					rfid_report_msg[0] = '*';
-//					rfid_report_msg[1] = strlen(epcStr) + 1 + 1;
-//					rfid_report_msg[2] = CO_RFID_REPORT;
-//					rfid_report_msg[3] = trd->antenna;
-					for (int j = 0; j < strlen(epcStr); j++) {
-						rfid_report_msg[j] = epcStr[j];
+					rfid_report_msg[0] = '*';
+					rfid_report_msg[1] = strlen(epcStr) + 1 + 1;
+					rfid_report_msg[2] = CO_RFID_REPORT;
+					rfid_report_msg[3] = trd->antenna;
+					int j = 0;
+					for (j = 0; j < strlen(epcStr); j++) {
+						rfid_report_msg[4 + j] = epcStr[j];
 					}
-					if (send_udp_msg_checksum(socket_fd, "192.168.1.48", PARAMS_PORT, rfid_report_msg, strlen(epcStr)) < 0) {
+					if (send_udp_msg_checksum(socket_fd, "192.168.1.50",
+							PARAMS_PORT, rfid_report_msg, strlen(epcStr) + 4)
+							< 0) {
 #ifdef RFID_DEBUG
 						printf("geo_rfid: ERROR SENDING RFID REPORT\n");
 						fflush(stdout);
