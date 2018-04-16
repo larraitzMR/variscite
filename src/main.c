@@ -39,7 +39,6 @@ int main(void) {
 	TMR_TagReadData* tagReads;
 	int i;
 	int errors = 0;
-	char keep_alive_msg[] = { '*', 2, CO_KEEPALIVE, ID_GEORFID, '\0' };
 	char rfid_report_msg[64];
 
 	void ** dato;
@@ -371,18 +370,6 @@ int main(void) {
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_GEN2_TARGET, &value);
 		} else if (strcmp(msg, "START_READING") == 0) {
 			while (strcmp(msg, "STOP_READING") != 0) {
-				//Send keep-alive to geo-control
-				// MESSAGE FORMAT:
-				// * | MSG_LEN(1b) | CO(1b) | PROCESS_ID(1B) | CHECKSUM(1b)
-				// CHECKSUM is calculated by send_udp_msg() function
-//				if (send_udp_msg_checksum(socket_fd, "192.168.1.51", CONTROL_PORT, keep_alive_msg, strlen(keep_alive_msg)) < 0) {
-//#ifdef RFID_DEBUG
-//					printf("geo_rfid: ERROR SENDING KEEPALIVE MESSAGE\n");
-//					fflush(stdout);
-//#endif
-//					errors++;
-//				}
-
 				//Init tag count
 				tag_read_count = 0;
 
@@ -400,26 +387,23 @@ int main(void) {
 						trd = &tagReads[i];
 						TMR_bytesToHex(trd->tag.epc, trd->tag.epcByteCount,	epcStr);
 						printf("EPC:%s ant:%d count:%u\n", epcStr, trd->antenna, trd->readCount);
+						printf("RSSI:%d\n", trd->rssi);
 						fflush(stdout);
 						//Send antena and epc to geo_communications
 						// MESSAGE FORMAT:
 						// * | MSG_LEN(1b) | CO(1b) | ANTENNA(1B) | EPC(NB) | CHECKSUM(1b)
 						// CHECKSUM is calculated by send_udp_msg() function
 						bzero(rfid_report_msg, sizeof(rfid_report_msg));
-//						rfid_report_msg[0] = '*';
-//						rfid_report_msg[1] = strlen(epcStr) + 1 + 1;
-//						rfid_report_msg[2] = CO_RFID_REPORT;
-//						rfid_report_msg[3] = trd->antenna;
-						rfid_report_msg[0] = trd->rssi;
-						int j = 1;
-						for (j = 1; j < strlen(epcStr); j++) {
-							rfid_report_msg[j] = epcStr[j];
+						rfid_report_msg[0] = trd->antenna;
+						rfid_report_msg[1] = trd->rssi;
+						int j = 0;
+						for (j = 0; j < strlen(epcStr); j++) {
+							rfid_report_msg[j+2] = epcStr[j];
 						}
 
+						send_udp_msg(socket_fd, "192.168.1.51",RFID_PORT, rfid_report_msg,strlen(epcStr)+2);
 
-//						if (send_udp_msg_checksum(socket_fd, "192.168.1.51",PARAMS_PORT, rfid_report_msg,strlen(epcStr)) < 0) {
 
-						enviar_udp_msg(socket_fd, rfid_report_msg, RFID_PORT);
 					}
 				}
 
