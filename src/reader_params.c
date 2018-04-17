@@ -31,9 +31,58 @@ void printU8List(TMR_uint8List *list, int *ports) {
 	putchar(']');
 }
 
+static const char *regionName(TMR_Region region)
+{
+  if (region == TMR_REGION_OPEN)
+  {
+    return "OPEN";
+  }
+  return listname(regions, numberof(regions), region);
+}
+
+void getRegionNames(TMR_Reader *rp, int *reg)
+{
+	printf("GET REGION NAMES\n");
+	TMR_Status ret;
+	TMR_RegionList value;
+	TMR_Region valueList[32];
+	int i;
+
+	value.max = numberof(valueList);
+	value.list = valueList;
+
+	ret = TMR_paramGet(rp, TMR_PARAM_REGION_SUPPORTEDREGIONS, &value);
+
+	printf("[");
+	for (i = 0; i < value.len && i < value.max; i++) {
+
+		printf("%s%s", regionName(value.list[i]), ((i + 1) == value.len) ? "" : ",");
+		//strcpy(reg[i],regionName(value.list[i]));
+		//printf("%s", reg[i]);
+		reg[i] = value.list[i];
+	}
+	if (value.len > value.max){
+		printf("...");
+	}
+	printf("]\n");
+}
+
+
+int getRegionNumber(char * name)
+{
+	int len = sizeof(regions)/sizeof(regions[0]);
+	int i;
+
+	for(i = 0; i < len; ++i)
+	{
+	    if(strcmp(regions[i], name)==0){
+	    	printf("Numero Region: %d", i);
+	    	return i;
+	    }
+	}
+}
 void getAntennaList(char *lchar, TMR_uint8List *list) {
 	int i = 0;
-	;
 	char* p;
 	list->len = 0;
 	list->max = 4;

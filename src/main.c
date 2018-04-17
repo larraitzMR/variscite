@@ -47,6 +47,7 @@ int main(void) {
 	char powerMinMax[10];
 	char power[2];
 	char Ready[5] = "READY";
+	int reg[20];
 	int puertos[4];
 	int puertosC[4];
 	int selAnt[4];
@@ -54,6 +55,7 @@ int main(void) {
 	char puertosAnt[4];
 	char antenaCheck[1];
 	char selecAntenna[4];
+	char regiones[20];
 
 	//M6E reader instance
 	rp = &r;
@@ -329,7 +331,24 @@ int main(void) {
 			fflush(stdout);
 			enviar_udp_msg(socket_fd, (char *) dato, PARAMS_PORT);
 
-		} else if (strcmp(msg, "SET_REGION") == 0) {
+		} else if (strncmp(msg, "SET_REGION",10) == 0) {
+			int longitud = strlen(msg) - 11;
+			char *nuevo = (char*) malloc(sizeof(char) * (longitud + 1));
+			nuevo[longitud] = '\0';
+			strncpy(nuevo, msg + 11, longitud);
+			printf("REGION: %s\n", nuevo);
+			fflush(stdout);
+			int value = getRegionNumber(nuevo);
+			tmr_ret = TMR_paramSet(rp, TMR_PARAM_REGION_ID, &value);
+
+		} else if (strcmp(msg, "GET_SUPPORTED_REGIONS") == 0) {
+			getRegionNames(rp, reg);
+			for(int i = 0; i<20; i++) {
+				regiones[i] = reg[i];
+				printf("Reg Nums: %d", reg[i]);
+			}
+			enviar_udp_msg(socket_fd, regiones, PARAMS_PORT);
+			bzero(regiones, sizeof(regiones));
 
 		} else if (strcmp(msg, "SET_TARI") == 0) {
 
@@ -402,8 +421,6 @@ int main(void) {
 						}
 
 						send_udp_msg(socket_fd, "192.168.1.51",RFID_PORT, rfid_report_msg,strlen(epcStr)+2);
-
-
 					}
 				}
 
