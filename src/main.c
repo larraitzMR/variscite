@@ -21,6 +21,7 @@
 #include "network.h"
 #include "geo_rfid.h"
 #include "reader_params.h"
+#include "main.h"
 
 // =======================================================================
 //
@@ -29,8 +30,13 @@
 // =======================================================================
 uint8_t ant_buffer[] = { };
 uint8_t ant_count = 0;
+struct tablaEPC tabla;
+
 
 int main(void) {
+
+	//tabla = NULL;
+
 	TMR_Reader r, *rp;
 	TMR_Status tmr_ret;
 	TMR_Region region;
@@ -405,8 +411,8 @@ int main(void) {
 
 						trd = &tagReads[i];
 						TMR_bytesToHex(trd->tag.epc, trd->tag.epcByteCount,	epcStr);
-						printf("EPC:%s ant:%d count:%u\n", epcStr, trd->antenna, trd->readCount);
-						printf("RSSI:%d\n", trd->rssi);
+						printf("EPC:%s ant:%d count:%u rssi: %x\n", epcStr, trd->antenna, trd->readCount, trd->rssi);
+						//printf("RSSI:%d\n", trd->rssi);
 						fflush(stdout);
 						//Send antena and epc to geo_communications
 						// MESSAGE FORMAT:
@@ -421,6 +427,10 @@ int main(void) {
 						}
 
 						send_udp_msg(socket_fd, "192.168.1.51",RFID_PORT, rfid_report_msg,strlen(epcStr)+2);
+						uint8_t antena = trd->antenna;
+						int32_t rssi = trd->rssi;
+//						printf("Prueba: %u %d", antena, rssi);
+						addTagtoTable(&tabla, epcStr, antena, rssi);
 					}
 				}
 
@@ -440,3 +450,27 @@ int main(void) {
 	TMR_destroy(rp);
 	return EXIT_SUCCESS;
 } // MAIN END
+
+
+void addTagtoTable(struct tablaEPC *tabla, char epc[], uint8_t antena, int32_t rssi) {
+
+	//TODO: falta por meter la hora
+	printf("Add tag to table\n");
+	for (int i = 0; i < tabla->numEPC; i++){
+		if (strcmp(tabla[i].EPC, epc)==0){
+			tabla[i].datos[tabla[i].datos->numDatos+1].antena = antena;
+			tabla[i].datos[tabla[i].datos->numDatos+1].RSSI = rssi;
+			printf("IF: %s %d %x\n", tabla[i].EPC, tabla[i].datos[tabla[i].datos->numDatos+1].antena, tabla[i].datos[tabla[i].datos->numDatos+1].RSSI);
+			tabla[i].datos->numDatos++;
+			tabla->numEPC++;
+			return;
+		}
+		return;
+	}
+	strcpy(tabla[tabla->numEPC].EPC, epc);
+	tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].antena = antena;
+	tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].RSSI = rssi;
+	printf("FUERA: %s %d %x\n", tabla[tabla->numEPC].EPC, tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].antena, tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].RSSI);
+	tabla[tabla->numEPC].datos->numDatos++;
+	tabla->numEPC++;
+}

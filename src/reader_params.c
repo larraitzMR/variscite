@@ -31,7 +31,7 @@ void printU8List(TMR_uint8List *list, int *ports) {
 	putchar(']');
 }
 
-static const char *regionName(TMR_Region region)
+char *regionName(TMR_Region region)
 {
   if (region == TMR_REGION_OPEN)
   {
