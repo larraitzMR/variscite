@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 #include "m6e/tm_reader.h"
 #include "network.h"
 #include "geo_rfid.h"
@@ -303,37 +304,37 @@ int main(void) {
 		} else if (strcmp(msg, "GET_ADV_OPT") == 0) {
 
 			dato = getParam(rp, TMR_PARAM_REGION_ID);
-			printf("REGION: %s\n", dato);
+			//printf("REGION: %s\n", dato);
 			fflush(stdout);
 			enviar_udp_msg(socket_fd, (char *) dato, PARAMS_PORT);
 
 			dato = getParam(rp, TMR_PARAM_GEN2_TARI);
-			printf("TARI: %s\n", dato);
+			//printf("TARI: %s\n", dato);
 			fflush(stdout);
 			enviar_udp_msg(socket_fd, (char *) dato, PARAMS_PORT);
 
 			dato = getParam(rp, TMR_PARAM_GEN2_BLF);
-			printf("BLF: %s\n", dato);
+			//printf("BLF: %s\n", dato);
 			fflush(stdout);
 			enviar_udp_msg(socket_fd, (char *) dato, PARAMS_PORT);
 
 			dato = getParam(rp, TMR_PARAM_GEN2_TAGENCODING);
-			printf("ENCONDING: %s\n", dato);
+			//printf("ENCONDING: %s\n", dato);
 			fflush(stdout);
 			enviar_udp_msg(socket_fd, (char *) dato, PARAMS_PORT);
 
 			dato = getParam(rp, TMR_PARAM_GEN2_Q);
-			printf("Q: %s\n", dato);
+			//printf("Q: %s\n", dato);
 			fflush(stdout);
 			enviar_udp_msg(socket_fd, (char *) dato, PARAMS_PORT);
 
 			dato = getParam(rp, TMR_PARAM_GEN2_SESSION);
-			printf("SESION: %s\n", dato);
+			//printf("SESION: %s\n", dato);
 			fflush(stdout);
 			enviar_udp_msg(socket_fd, (char *) dato, PARAMS_PORT);
 
 			dato = getParam(rp, TMR_PARAM_GEN2_TARGET);
-			printf("TARGET: %s\n", dato);
+			//printf("TARGET: %s\n", dato);
 			fflush(stdout);
 			enviar_udp_msg(socket_fd, (char *) dato, PARAMS_PORT);
 
@@ -411,7 +412,7 @@ int main(void) {
 
 						trd = &tagReads[i];
 						TMR_bytesToHex(trd->tag.epc, trd->tag.epcByteCount,	epcStr);
-						printf("EPC:%s ant:%d count:%u rssi: %x\n", epcStr, trd->antenna, trd->readCount, trd->rssi);
+						printf("EPC:%s ant:%d count:%u rssi: %02x\n", epcStr, trd->antenna, trd->readCount, trd->rssi);
 						//printf("RSSI:%d\n", trd->rssi);
 						fflush(stdout);
 						//Send antena and epc to geo_communications
@@ -429,7 +430,6 @@ int main(void) {
 						send_udp_msg(socket_fd, "192.168.1.51",RFID_PORT, rfid_report_msg,strlen(epcStr)+2);
 						uint8_t antena = trd->antenna;
 						int32_t rssi = trd->rssi;
-//						printf("Prueba: %u %d", antena, rssi);
 						addTagtoTable(&tabla, epcStr, antena, rssi);
 					}
 				}
@@ -454,13 +454,17 @@ int main(void) {
 
 void addTagtoTable(struct tablaEPC *tabla, char epc[], uint8_t antena, int32_t rssi) {
 
-	//TODO: falta por meter la hora
-	printf("Add tag to table\n");
+	time_t curtime;
+	struct tm *loc_time;
+	curtime = time(NULL);
+	loc_time = localtime(&curtime);
+
 	for (int i = 0; i < tabla->numEPC; i++){
 		if (strcmp(tabla[i].EPC, epc)==0){
-			tabla[i].datos[tabla[i].datos->numDatos+1].antena = antena;
 			tabla[i].datos[tabla[i].datos->numDatos+1].RSSI = rssi;
-			printf("IF: %s %d %x\n", tabla[i].EPC, tabla[i].datos[tabla[i].datos->numDatos+1].antena, tabla[i].datos[tabla[i].datos->numDatos+1].RSSI);
+			tabla[i].datos[tabla[i].datos->numDatos+1].antena = antena;
+			strcpy(tabla[i].datos[tabla[i].datos->numDatos+1].time, asctime(loc_time));
+			//printf("IF: %s %d %x\n", tabla[i].EPC, tabla[i].datos[tabla[i].datos->numDatos+1].antena, tabla[i].datos[tabla[i].datos->numDatos+1].RSSI);
 			tabla[i].datos->numDatos++;
 			tabla->numEPC++;
 			return;
@@ -470,7 +474,9 @@ void addTagtoTable(struct tablaEPC *tabla, char epc[], uint8_t antena, int32_t r
 	strcpy(tabla[tabla->numEPC].EPC, epc);
 	tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].antena = antena;
 	tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].RSSI = rssi;
-	printf("FUERA: %s %d %x\n", tabla[tabla->numEPC].EPC, tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].antena, tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].RSSI);
+	strcpy(tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].time, asctime(loc_time));
+	//printf("FUERA: %s %d %x\n", tabla[tabla->numEPC].EPC, tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].antena, tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].RSSI);
 	tabla[tabla->numEPC].datos->numDatos++;
 	tabla->numEPC++;
+
 }
