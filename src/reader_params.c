@@ -9,13 +9,13 @@
 #include "m6e/tmr_utils.h"
 #include "reader_params.h"
 
-static const char *gen2LinkFrequencyNames[] = { "LINK250KHZ", "LINK300KHZ",
-		"LINK320KHZ", "LINK40KHZ", "LINK640KHZ" };
+static const char *gen2LinkFrequencyNames[] = { "LINK250KHZ", "LINK300KHZ",	"LINK320KHZ", "LINK40KHZ", "LINK640KHZ" };
 static const char *sessionNames[] = { "S0", "S1", "S2", "S3" };
 static const char *targetNames[] = { "A", "B", "AB", "BA" };
 static const char *tagEncodingNames[] = {"FM0", "M2", "M4", "M8"};
 static const char *tariNames[] = { "TARI_25US", "TARI_12_5US", "TARI_6_25US" };
 static const char *regions[] = {"UNSPEC", "NA", "EU", "KR", "IN", "JP", "PRC", "EU2", "EU3", "KR2", "PRC2", "AU", "NZ", "NA2", "NA3", "IS"};
+
 
 void printU8List(TMR_uint8List *list, int *ports) {
 	int i;
@@ -29,6 +29,59 @@ void printU8List(TMR_uint8List *list, int *ports) {
 		printf("...");
 	}
 	putchar(']');
+}
+
+static bool
+strcasecmpcount(const char *a, const char *b, int *matches)
+{
+  int i = 0;
+
+  while (*a && *b &&
+    (tolower((unsigned char)*a) == tolower((unsigned char)*b)))
+  {
+    i++;
+    a++;
+    b++;
+  }
+  if (matches)
+  {
+    *matches = i;
+  }
+  return (*a == *b);
+}
+
+int listid(const char *list[], int listlen, const char *name)
+{
+  int i, len, match, bestmatch, bestmatchindex;
+
+  bestmatch = 0;
+  bestmatchindex = -1;
+  len = (int)strlen(name);
+  for (i = 0; i < listlen; i++)
+  {
+    if (NULL != list[i])
+    {
+      if (strcasecmpcount(name, list[i], &match))
+      {
+        return i; /* Exact match - return immediately */
+      }
+      if (match == len)
+      {
+        if (bestmatch == 0)
+        {
+          /* Prefix match - return if nothing else conflicts */
+          bestmatch = match;
+          bestmatchindex = i;
+        }
+        else
+        {
+          /* More than one prefix match of the same length - ambiguous */
+          bestmatchindex = -1;
+        }
+      }
+    }
+  }
+  return bestmatchindex;
 }
 
 char *regionName(TMR_Region region)
@@ -81,6 +134,18 @@ int getRegionNumber(char * name)
 	    }
 	}
 }
+
+int getID(char * name, char * lista)
+{
+	if(strcmp(lista, "Tari")==0){
+		return listid(tariNames, sizeof(tariNames), name);
+	} else if(strcmp(lista, "M")==0){
+		return listid(tagEncodingNames, sizeof(tagEncodingNames), name);
+	} else if(strcmp(lista, "Target")==0){
+		return listid(targetNames, sizeof(targetNames), name);
+	}
+}
+
 void getAntennaList(char *lchar, TMR_uint8List *list) {
 	int i = 0;
 	char* p;
@@ -193,6 +258,7 @@ void **getParam(TMR_Reader *rp, TMR_Param key) {
 		char *s;
 
 		ret = TMR_paramGet(rp, key, &value);
+		//printf("SESSION: %d\n", value);
 		if (TMR_SUCCESS != ret) {
 			goto out;
 		}
@@ -204,6 +270,7 @@ void **getParam(TMR_Reader *rp, TMR_Param key) {
 		char *s;
 
 		ret = TMR_paramGet(rp, key, &value);
+		printf("TARGET: %d\n", value);
 		if (TMR_SUCCESS != ret) {
 			goto out;
 		}
@@ -218,8 +285,8 @@ void **getParam(TMR_Reader *rp, TMR_Param key) {
 		if (TMR_SUCCESS != ret) {
 			goto out;
 		}
+		printf("TARI: %d\n", value);
 		s = listname(tariNames, numberof(tariNames), value);
-		//printf("TARI: %s\n", s);
 		return s;
 	} else if (TMR_PARAM_GEN2_BLF == key) {
 		TMR_GEN2_LinkFrequency value;
@@ -242,7 +309,7 @@ void **getParam(TMR_Reader *rp, TMR_Param key) {
 			}
 			s = listname(gen2LinkFrequencyNames, numberof(gen2LinkFrequencyNames), value);
 		}
-		//printf("BLF: %s\n", s);
+		printf("BLF: %d\n", value);
 		return s;
 	} else if (TMR_PARAM_GEN2_TAGENCODING == key) {
 		TMR_GEN2_TagEncoding value;
@@ -253,7 +320,7 @@ void **getParam(TMR_Reader *rp, TMR_Param key) {
 			goto out;
 		}
 		s = listname(tagEncodingNames, numberof(tagEncodingNames), value);
-		//printf("ENCODING: %s\n", s);
+		printf("ENCODING: %d\n", value);
 		return s;
 	} else if (TMR_PARAM_GEN2_Q == key) {
 
@@ -261,6 +328,7 @@ void **getParam(TMR_Reader *rp, TMR_Param key) {
 		char *s = "";
 
 		ret = TMR_paramGet(rp, key, &value);
+		//printf("Q: %d\n", value);
 		if (TMR_SUCCESS == ret)
 		{
 		  if (value.type == TMR_SR_GEN2_Q_DYNAMIC)

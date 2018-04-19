@@ -33,7 +33,6 @@ uint8_t ant_buffer[] = { };
 uint8_t ant_count = 0;
 struct tablaEPC tabla;
 
-
 int main(void) {
 
 	//tabla = NULL;
@@ -206,8 +205,6 @@ int main(void) {
 			enviar_udp_msg(socket_fd, antenaCheck, PARAMS_PORT);
 			bzero(antenaCheck, sizeof(antenaCheck));
 
-			//TODO: despues de esto comprobar que se puede leer con cualquier antena
-
 		} else if (strncmp(msg, "SET_ANT_CHECK_PORT", 18) == 0) {
 			char* str = NULL;
 			char* busca = "true";
@@ -225,7 +222,6 @@ int main(void) {
 				fflush(stdout);
 			}
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_ANTENNA_CHECKPORT, &value);
-			//TODO: despues de esto comprobar que se puede leer con cualquier antena
 
 		} else if (strcmp(msg, "GET_POWER") == 0) {
 			dato = getParam(rp, TMR_PARAM_RADIO_READPOWER);
@@ -357,13 +353,43 @@ int main(void) {
 			enviar_udp_msg(socket_fd, regiones, PARAMS_PORT);
 			bzero(regiones, sizeof(regiones));
 
-		} else if (strcmp(msg, "SET_TARI") == 0) {
+		} else if (strncmp(msg, "SET_TARI", 8) == 0) {
+			int longitud = strlen(msg) - 9;
+			char *nuevo = (char*) malloc(sizeof(char) * (longitud + 1));
+			nuevo[longitud] = '\0';
+			strncpy(nuevo, msg + 9, longitud);
+			printf("SET TARI: %s\n", nuevo);
+			fflush(stdout);
 
-		} else if (strcmp(msg, "SET_BLF") == 0) {
+			int32_t value = getID(nuevo, "Tari");
+			printf("TARI ID: %d\n", value);
+			tmr_ret = TMR_paramSet(rp, TMR_PARAM_GEN2_TARI, &value);
 
-		} else if (strcmp(msg, "SET_M") == 0) {
+		} else if (strncmp(msg, "SET_BLF", 7) == 0) {
+			int longitud = strlen(msg) - 8;
+			char *nuevo = (char*) malloc(sizeof(char) * (longitud + 1));
+			nuevo[longitud] = '\0';
+			strncpy(nuevo, msg + 8, longitud);
+			printf("SET BLF: %s\n", nuevo);
+			fflush(stdout);
 
-		} else if (strcmp(msg, "SET_Q") == 0) {
+			int32_t value = atoi(nuevo);
+			printf("BLF ID: %d\n", value);
+			tmr_ret = TMR_paramSet(rp, TMR_PARAM_GEN2_BLF, &value);
+
+		} else if (strncmp(msg, "SET_M",5) == 0) {
+			int longitud = strlen(msg) - 6;
+			char *nuevo = (char*) malloc(sizeof(char) * (longitud + 1));
+			nuevo[longitud] = '\0';
+			strncpy(nuevo, msg + 6, longitud);
+			printf("SET M: %s\n", nuevo);
+			fflush(stdout);
+
+			int32_t value = getID(nuevo, "M");
+			printf("M ID: %d\n", value);
+			tmr_ret = TMR_paramSet(rp, TMR_PARAM_GEN2_TAGENCODING, &value);
+
+		} else if (strncmp(msg, "SET_Q", 5) == 0) {
 
 		} else if (strncmp(msg, "SET_SESSION", 11) == 0) {
 			int longitud = strlen(msg) - 12;
@@ -372,8 +398,8 @@ int main(void) {
 			strncpy(nuevo, msg + 12, longitud);
 			printf("SESION: %s\n", nuevo);
 			fflush(stdout);
+
 			int32_t value = atoi(nuevo);
-			// printf("Atoi: %d\n", value);
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_GEN2_SESSION, &value);
 
 		} else if (strncmp(msg, "SET_TARGET", 10) == 0) {
@@ -381,19 +407,13 @@ int main(void) {
 			char *nuevo = (char*) malloc(sizeof(char) * (longitud + 1));
 			nuevo[longitud] = '\0';
 			strncpy(nuevo, msg + 11, longitud);
-			printf("TARGET: %s\n", nuevo);
+			printf("SET TARGET: %s\n", nuevo);
 			fflush(stdout);
-			int32_t value;
-			if (strcmp(nuevo, "A") == 0) {
-				value = 0;
-			} else if (strcmp(nuevo, "B") == 0) {
-				value = 1;
-			} else if (strcmp(nuevo, "AB") == 0) {
-				value = 2;
-			}
-			printf("Value: %d\n", value);
-			fflush(stdout);
+
+			int32_t value = getID(nuevo, "Target");
+			printf("Target ID: %d\n", value);
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_GEN2_TARGET, &value);
+
 		} else if (strcmp(msg, "START_READING") == 0) {
 			while (strcmp(msg, "STOP_READING") != 0) {
 				//Init tag count
