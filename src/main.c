@@ -483,7 +483,7 @@ void addTagtoTable(struct tablaEPC *tabla, char epc[], uint8_t antena, int32_t r
 		if (strcmp(tabla[i].EPC, epc)==0){
 			tabla[i].datos[tabla[i].datos->numDatos+1].RSSI = rssi;
 			tabla[i].datos[tabla[i].datos->numDatos+1].antena = antena;
-			strcpy(tabla[i].datos[tabla[i].datos->numDatos+1].time, asctime(loc_time));
+			strcpy(tabla[i].datos[tabla[i].datos->numDatos+1].hora, asctime(loc_time));
 			//printf("IF: %s %d %x\n", tabla[i].EPC, tabla[i].datos[tabla[i].datos->numDatos+1].antena, tabla[i].datos[tabla[i].datos->numDatos+1].RSSI);
 			tabla[i].datos->numDatos++;
 			tabla->numEPC++;
@@ -494,7 +494,7 @@ void addTagtoTable(struct tablaEPC *tabla, char epc[], uint8_t antena, int32_t r
 	strcpy(tabla[tabla->numEPC].EPC, epc);
 	tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].antena = antena;
 	tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].RSSI = rssi;
-	strcpy(tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].time, asctime(loc_time));
+	strcpy(tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].hora, asctime(loc_time));
 	//printf("FUERA: %s %d %x\n", tabla[tabla->numEPC].EPC, tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].antena, tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].RSSI);
 	tabla[tabla->numEPC].datos->numDatos++;
 	tabla->numEPC++;
