@@ -42,6 +42,7 @@ extern "C" {
 #endif
 
 #include "tmr_types.h"
+
 /* Macros for working with values embedded in uint8_t arrays (msg) */
 /* Absolute-value get */
 #define GETU8AT(msg, i) ( \

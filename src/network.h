@@ -14,8 +14,7 @@
 // =======================================================================
 #define NETWORK_DEBUG
 
-#define IP_ADDRESS 			"192.168.1.54"
-
+#define IP_ADDRESS		"192.168.1.54"
 // =======================================================================
 //
 //  PROTOTYPES
@@ -33,3 +32,4 @@ int send_tcp_msg(int sock_descriptor, char *data, short len);
 char network_checksum(char *data, short len);
 
 #endif /* NETWORK_H_ */
+

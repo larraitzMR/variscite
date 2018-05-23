@@ -22,11 +22,15 @@
 
 //#define UART_GPRS 		"/dev/ttymxc2"
 #define UART_GPRS 			"/dev/ttyUSB0"
-#define GPRS_APN_NAME		"internet.easym2m.eu"
+//#define GPRS_APN_NAME		"internet.easym2m.eu"
+#define GPRS_APN_NAME		"tuenti.com"
 //#define GPRS_APN_NAME		"NXT17.NET"
-#define GPRS_APN_USER		""
-#define GPRS_APN_PASS		""
-#define GPRS_SIM_PIN		"1234"
+//#define GPRS_APN_USER		""
+//#define GPRS_APN_PASS		""
+#define GPRS_APN_USER		"tuenti"
+#define GPRS_APN_PASS		"tuenti"
+//#define GPRS_SIM_PIN		"1234"
+#define GPRS_SIM_PIN		"3870"
 #define GPRS_SERVER_IP		"5.135.120.65"
 #define GPRS_SERVER_PORT	80
 
@@ -97,6 +101,7 @@ void gprs_close(void);
 void gprs_configure_AT(void);
 void gprs_process_msg(void);
 void gprs_at_test(void);
+void gprs_at_enter_pin(void);
 void gprs_at_check_network(void);
 void gprs_at_set_context(void);
 void gprs_at_imei(void); //??
@@ -119,3 +124,4 @@ int gprs_send_position( t_position lat, t_position lon);
 
 
 #endif /* SIM808_H_ */
+

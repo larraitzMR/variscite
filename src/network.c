@@ -11,9 +11,9 @@
 #include <string.h>
 #include <sys/socket.h>		// UDP and TCP socket
 #include <netinet/in.h>		// in_addr struct
-#include <fcntl.h>			// To configure socket
-#include <arpa/inet.h>      // inet_ntoa() for IP format
-#include <errno.h>			// For error handling
+#include <fcntl.h>		// To configure socket
+#include <arpa/inet.h>      	// inet_ntoa() for IP format
+#include <errno.h>		// For error handling
 #include "network.h"
 
 
@@ -188,7 +188,7 @@ int read_udp_message(int sock_descriptor, char *message, char len){
 	if (rc < 0){
 		if (errno!=EWOULDBLOCK){
 			#ifdef NETWORK_DEBUG
-			printf("network: REAL ERROR WHEN READING AN UDP SOCKET\n");
+//			printf("network: REAL ERROR WHEN READING AN UDP SOCKET\n");
 			fflush(stdout);
 			#endif
 			return -1;
@@ -200,7 +200,7 @@ int read_udp_message(int sock_descriptor, char *message, char len){
 		// Test checksum
 		if (message[rc-1] != network_checksum(message,rc-1)){
 			#ifdef NETWORK_DEBUG
-			printf("network: WRONG CHECKSUM IN RECEIVED UDP MESSAGE\n");
+//			printf("network: WRONG CHECKSUM IN RECEIVED UDP MESSAGE\n");
 			fflush(stdout);
 			#endif
 			return -1;
@@ -354,3 +354,4 @@ char network_checksum(char *data, short len){
 
 	return result;
 } // NETWORK_CHECKSUM END
+

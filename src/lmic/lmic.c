@@ -67,8 +67,6 @@ static void engineUpdate(void);
 static void startScan (void);
 
 
-
-
 // LMIC application callbacks not used in his example
 void os_getArtEui (u1_t* buf) {
 }
@@ -81,6 +79,7 @@ void os_getDevKey (u1_t* buf) {
 
 void onEvent (ev_t ev) {
 }
+
 
 // ================================================================================
 // BEG OS - default implementations for certain OS suport functions

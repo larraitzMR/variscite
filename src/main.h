@@ -20,4 +20,4 @@ struct tablaEPC{
 	int numEPC;
 };
 
-void addTagtoTable(struct tablaEPC *tabla, char epc[], uint8_t antena, int32_t rssi);
+void addTagtoTable(struct tablaEPC *tabla, char *epc, uint8_t antena, int32_t rssi);

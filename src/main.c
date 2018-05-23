@@ -18,10 +18,17 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <time.h>
+#include "lmic/lmic.h"
+#include "sim808.h"
 #include "m6e/tm_reader.h"
 #include "network.h"
 #include "geo_rfid.h"
 #include "reader_params.h"
+#include "sqlite3.h"
 #include "main.h"
 
 // =======================================================================
@@ -33,9 +40,25 @@ uint8_t ant_buffer[] = { };
 uint8_t ant_count = 0;
 struct tablaEPC tabla;
 
-int main(void) {
+// log text
+static void initfunc (osjob_t* job) {
+    // reschedule job every second
+    os_setTimedCallback(job, os_getTime()+sec2osticks(1), initfunc);
+}
 
-	//tabla = NULL;
+static int callback(void *data, int argc, char **argv, char **azColName) {
+	int i;
+	fprintf(stderr, "%s: ", (const char*) data);
+
+	for (i = 0; i < argc; i++) {
+		printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+	}
+
+	printf("\n");
+	return 0;
+}
+
+int main(void) {
 
 	TMR_Reader r, *rp;
 	TMR_Status tmr_ret;
@@ -63,6 +86,40 @@ int main(void) {
 	char selecAntenna[4];
 	char regiones[20];
 
+//	sqlite3 *db;
+//	int rc;
+//	char *zErrMsg = 0;
+//	char *sql;
+//	const char* data = "Callback function called";
+
+//	/* Open database */
+//	rc = sqlite3_open("test.db", &db);
+//
+//	if (rc) {
+//		fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+//		return (0);
+//	} else {
+//		fprintf(stderr, "Opened database successfully\n");
+//	}
+
+//	sql = "CREATE TABLE IF NOT EXISTS INVENTORY ("
+//			"ID INTEGER PRIMARY KEY, "
+//			"TIME INTEGER, "
+//			"EPC TEXT, "
+//			"TID TEXT, "
+//			"RSSI INTEGER, "
+//			"READER_SLOT INTEGER);";
+//
+//	/* Execute SQL statement */
+//	rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+//
+//	if (rc != SQLITE_OK) {
+//		fprintf(stderr, "SQL error: %s\n", zErrMsg);
+//		sqlite3_free(zErrMsg);
+//	} else {
+//		fprintf(stdout, "Success\n");
+//	}
+
 	//M6E reader instance
 	rp = &r;
 	tmr_ret = TMR_create(rp, RFID_READER_URI);
@@ -75,7 +132,7 @@ int main(void) {
 	//Connect to the reader
 	tmr_ret = TMR_connect(rp);
 	if (tmr_ret != TMR_SUCCESS) {
-		printf("geo_rfid: ERROR CONNECTING M6E\n");
+		printf("geo_rfid: Error connecting reader: %s\n", TMR_strerr(rp, tmr_ret));
 		fflush(stdout);
 		exit(1);
 	}
@@ -83,6 +140,7 @@ int main(void) {
 	//Commit region
 	region = TMR_REGION_NONE;
 	tmr_ret = TMR_paramGet(rp, TMR_PARAM_REGION_ID, &region);
+	//printf("geo_rfid: Region: %s\n", TMR_strerr(rp, tmr_ret));
 	if (tmr_ret != TMR_SUCCESS) {
 		printf("geo_rfid: ERROR SETTING REGION\n");
 		fflush(stdout);
@@ -105,7 +163,7 @@ int main(void) {
 
 		if (regions.len < 1) {
 			if (tmr_ret != TMR_SUCCESS) {
-				printf("geo_rfid: Reader doesn't support any regions\n");
+				printf("geo_rfid: Reader doesn't support any region\n");
 				fflush(stdout);
 				exit(1);
 			}
@@ -153,10 +211,44 @@ int main(void) {
 	enviar_udp_msg(socket_fd, Ready, COMMUNICATIONS_PORT);
 	while (strcmp(msg, "CONECTADO") != 0) {
 		read_udp_message(socket_fd, msg, strlen(msg));
+		printf("msg: %s\n", msg);
 		enviar_udp_msg(socket_fd, Ready, COMMUNICATIONS_PORT);
 	}
 
 	//TODO: en la funcion send_udp_msg esta quitado el checksum para que vaya bien
+
+//	//Init GPRS
+//	int fd_sim808 = 0;
+//	int result = 0;
+//	fd_set rfds;
+//	struct timeval tv;
+//
+//	printf("Probando GPRS: \n");
+//	printf("============== \n");
+//	fflush(stdout);
+//
+//	//Iniciamos gprs
+//	fd_sim808 = gprs_init();
+//	if (fd_sim808 <= 0) {
+//		printf("Error arrancando gprs\n");
+//		fflush(stdout);
+//		return (-1);
+//	}
+//	printf("fd_sim808: %d\n", fd_sim808);
+//	fflush(stdout);
+//
+//	//Tiempos
+//	time_t program_start = time(NULL);
+//	time_t last_send_position = time(NULL);
+//
+//	///LORA library initialization
+//	osjob_t initjob;
+//
+//	// initialize runtime env
+//	os_init();
+//
+//	// setup initial job
+//	os_setCallback(&initjob, initfunc);
 
 	while (strcmp(msg, "DISCONNECT") != 0) {
 
@@ -447,7 +539,7 @@ int main(void) {
 							rfid_report_msg[j+2] = epcStr[j];
 						}
 
-						send_udp_msg(socket_fd, IP_ADDRESS, RFID_PORT, rfid_report_msg,strlen(epcStr)+2);
+						send_udp_msg(socket_fd, IP_ADDRESS,RFID_PORT, rfid_report_msg,strlen(epcStr)+2);
 						uint8_t antena = trd->antenna;
 						int32_t rssi = trd->rssi;
 						addTagtoTable(&tabla, epcStr, antena, rssi);
@@ -500,3 +592,4 @@ void addTagtoTable(struct tablaEPC *tabla, char epc[], uint8_t antena, int32_t r
 	tabla->numEPC++;
 
 }
+

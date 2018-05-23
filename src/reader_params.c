@@ -359,3 +359,4 @@ void **getParam(TMR_Reader *rp, TMR_Param key) {
 		printf("Error retrieving value: %s\n", TMR_strerr(rp, ret));
 	}
 }
+

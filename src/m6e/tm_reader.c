@@ -518,14 +518,15 @@ TMR_readIntoArray(struct TMR_Reader *reader, uint32_t timeoutMs,
   do 
   {
 
-    ret = TMR_read(reader, timeoutMs, &count);
+    ret = TMR_read(reader, timeoutMs, &count);;
     if ((TMR_SUCCESS != ret) && (TMR_ERROR_TAG_ID_BUFFER_FULL != ret))
-    {
+    {	printf("Error read: %d\r\n", ret);
       goto out;
     }
 
     if (0 == count)
     {
+	printf("0 = count\r\n");
       goto out;
     }
     else if (-1 == count) /* Unknown - streaming */
@@ -602,9 +603,8 @@ TMR_readIntoArray(struct TMR_Reader *reader, uint32_t timeoutMs,
 
 out:
   if (NULL != tagCount)
-    *tagCount = tagsRead;
-  *result = results;
-  printf("tags: %d\r\n", tagsRead);
+    	*tagCount = tagsRead;
+  	*result = results;	
   return ret;
 }
 

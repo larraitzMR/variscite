@@ -10,6 +10,7 @@ C_SRCS += \
 ../src/reader_params.c \
 ../src/sim808.c \
 ../src/spi.c \
+../src/sqlite3.c \
 ../src/sx1272.c \
 ../src/uart.c 
 
@@ -20,6 +21,7 @@ OBJS += \
 ./src/reader_params.o \
 ./src/sim808.o \
 ./src/spi.o \
+./src/sqlite3.o \
 ./src/sx1272.o \
 ./src/uart.o 
 
@@ -30,6 +32,7 @@ C_DEPS += \
 ./src/reader_params.d \
 ./src/sim808.d \
 ./src/spi.d \
+./src/sqlite3.d \
 ./src/sx1272.d \
 ./src/uart.d 
 
