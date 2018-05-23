@@ -70,7 +70,7 @@ int configure_udp_socket(int port){
 
 void enviar_udp_msg(int socket_fd, char *data, int port) {
 	int errors = 0;
-	if (send_udp_msg(socket_fd, "192.168.1.50", port, data, strlen(data)) < 0) {
+	if (send_udp_msg(socket_fd, IP_ADDRESS, port, data, strlen(data)) < 0) {
 #ifdef RFID_DEBUG
 		printf("geo_rfid: ERROR SENDING UDP MESSAGE\n");
 		fflush(stdout);

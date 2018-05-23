@@ -447,7 +447,7 @@ int main(void) {
 							rfid_report_msg[j+2] = epcStr[j];
 						}
 
-						send_udp_msg(socket_fd, "192.168.1.51",RFID_PORT, rfid_report_msg,strlen(epcStr)+2);
+						send_udp_msg(socket_fd, IP_ADDRESS, RFID_PORT, rfid_report_msg,strlen(epcStr)+2);
 						uint8_t antena = trd->antenna;
 						int32_t rssi = trd->rssi;
 						addTagtoTable(&tabla, epcStr, antena, rssi);
