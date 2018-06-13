@@ -86,39 +86,73 @@ int main(void) {
 	char selecAntenna[4];
 	char regiones[20];
 
-//	sqlite3 *db;
-//	int rc;
-//	char *zErrMsg = 0;
-//	char *sql;
-//	const char* data = "Callback function called";
+	sqlite3 *db;
+	int rc;
+	char *zErrMsg = 0;
+	char *sql;
+	const char* data = "Callback function called";
 
-//	/* Open database */
-//	rc = sqlite3_open("test.db", &db);
-//
-//	if (rc) {
-//		fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-//		return (0);
-//	} else {
-//		fprintf(stderr, "Opened database successfully\n");
-//	}
+	/* Open database */
+	rc = sqlite3_open("test.db", &db);
 
-//	sql = "CREATE TABLE IF NOT EXISTS INVENTORY ("
-//			"ID INTEGER PRIMARY KEY, "
-//			"TIME INTEGER, "
-//			"EPC TEXT, "
-//			"TID TEXT, "
-//			"RSSI INTEGER, "
-//			"READER_SLOT INTEGER);";
+	if (rc) {
+		fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+		return (0);
+	} else {
+		fprintf(stderr, "Opened database successfully\n");
+	}
+
+	sql = "CREATE TABLE IF NOT EXISTS INVENTORY ("
+			"ID INTEGER PRIMARY KEY, "
+			"TIME INTEGER, "
+			"EPC TEXT, "
+			"TID TEXT, "
+			"RSSI INTEGER, "
+			"READER_SLOT INTEGER);";
+
+	/* Execute SQL statement */
+	rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+
+	if (rc != SQLITE_OK) {
+		fprintf(stderr, "SQL error: %s\n", zErrMsg);
+		sqlite3_free(zErrMsg);
+	} else {
+		fprintf(stdout, "Success\n");
+	}
+
+
+//	//Init GPRS
+//	int fd_sim808 = 0;
+//	int result = 0;
+//	fd_set rfds;
+//	struct timeval tv;
 //
-//	/* Execute SQL statement */
-//	rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+//	printf("Probando GPRS: \n");
+//	printf("============== \n");
+//	fflush(stdout);
 //
-//	if (rc != SQLITE_OK) {
-//		fprintf(stderr, "SQL error: %s\n", zErrMsg);
-//		sqlite3_free(zErrMsg);
-//	} else {
-//		fprintf(stdout, "Success\n");
+//	//Iniciamos gprs
+//	fd_sim808 = gprs_init();
+//	if (fd_sim808 <= 0) {
+//		printf("Error arrancando gprs\n");
+//		fflush(stdout);
+//		return (-1);
 //	}
+//	printf("fd_sim808: %d\n", fd_sim808);
+//	fflush(stdout);
+//
+//	//Tiempos
+//	time_t program_start = time(NULL);
+//	time_t last_send_position = time(NULL);
+//
+//	///LORA library initialization
+//	osjob_t initjob;
+//
+//	// initialize runtime env
+//	os_init();
+//
+//	// setup initial job
+//	os_setCallback(&initjob, initfunc);
 
 	//M6E reader instance
 	rp = &r;
@@ -209,7 +243,7 @@ int main(void) {
 	}
 
 	enviar_udp_msg(socket_fd, Ready, COMMUNICATIONS_PORT);
-	while (strcmp(msg, "CONECTADO") != 0) {
+	while (strncmp(msg, "CONECTADO",9) != 0) {
 		read_udp_message(socket_fd, msg, strlen(msg));
 		printf("msg: %s\n", msg);
 		enviar_udp_msg(socket_fd, Ready, COMMUNICATIONS_PORT);
@@ -217,45 +251,12 @@ int main(void) {
 
 	//TODO: en la funcion send_udp_msg esta quitado el checksum para que vaya bien
 
-//	//Init GPRS
-//	int fd_sim808 = 0;
-//	int result = 0;
-//	fd_set rfds;
-//	struct timeval tv;
-//
-//	printf("Probando GPRS: \n");
-//	printf("============== \n");
-//	fflush(stdout);
-//
-//	//Iniciamos gprs
-//	fd_sim808 = gprs_init();
-//	if (fd_sim808 <= 0) {
-//		printf("Error arrancando gprs\n");
-//		fflush(stdout);
-//		return (-1);
-//	}
-//	printf("fd_sim808: %d\n", fd_sim808);
-//	fflush(stdout);
-//
-//	//Tiempos
-//	time_t program_start = time(NULL);
-//	time_t last_send_position = time(NULL);
-//
-//	///LORA library initialization
-//	osjob_t initjob;
-//
-//	// initialize runtime env
-//	os_init();
-//
-//	// setup initial job
-//	os_setCallback(&initjob, initfunc);
-
 	while (strcmp(msg, "DISCONNECT") != 0) {
 
 		read_udp_message(socket_fd, msg, strlen(msg));
 		printf("msg: %s\n", msg);
 
-		if (strcmp(msg, "POWER_MINMAX") == 0) {
+		if (strncmp(msg, "POWER_MINMAX",12) == 0) {
 			dato = getParam(rp, TMR_PARAM_RADIO_POWERMAX);
 			float max = (uint16_t) dato / 100;
 			powerMinMax[0] = max;
@@ -539,10 +540,24 @@ int main(void) {
 							rfid_report_msg[j+2] = epcStr[j];
 						}
 
-						send_udp_msg(socket_fd, IP_ADDRESS,RFID_PORT, rfid_report_msg,strlen(epcStr)+2);
+						send_udp_msg(socket_fd, IP_ADDRESS, RFID_PORT, rfid_report_msg,strlen(epcStr)+2);
 						uint8_t antena = trd->antenna;
 						int32_t rssi = trd->rssi;
 						addTagtoTable(&tabla, epcStr, antena, rssi);
+//						char *sqlInsert;
+//						sprintf(sqlInsert,
+//								"INSERT INTO INVENTORY (ID, TIME, EPC, TID, RSSI) VALUES (%d,%u,%s,%d,%02x);",
+//								i, trd->timestampHigh, epcStr, 0, trd->rssi);
+//						/* Execute SQL statement */
+//						rc = sqlite3_exec(db, sqlInsert, callback, 0,
+//								&zErrMsg);
+//
+//						if (rc != SQLITE_OK) {
+//							fprintf(stderr, "SQL error: %s\n", zErrMsg);
+//							sqlite3_free(zErrMsg);
+//						} else {
+//							fprintf(stdout, "Success\n");
+//						}
 					}
 				}
 
@@ -557,6 +572,15 @@ int main(void) {
 				read_udp_message(socket_fd, msg, strlen(msg));
 			}
 		}
+
+//		//Configuración gprs
+//		if (gprs_get_config() /*&& FD_ISSET(fd_sim808, &wfds)*/) {
+//			gprs_configure_AT();
+//		}
+//
+//		printf("GPS_STATUS %d\n", gps_get_status());
+//		printf("GPRS_STATUS %d\n",gprs_get_status());
+//		fflush(stdout);
 	}
 
 	TMR_destroy(rp);
@@ -592,4 +616,3 @@ void addTagtoTable(struct tablaEPC *tabla, char epc[], uint8_t antena, int32_t r
 	tabla->numEPC++;
 
 }
-
