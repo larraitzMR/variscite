@@ -38,7 +38,10 @@
 // =======================================================================
 uint8_t ant_buffer[] = { };
 uint8_t ant_count = 0;
-struct tablaEPC tabla;
+struct tablaEPC tabla[500];
+sqlite3 *db;
+int numeroEPCs;
+int ID = 0;
 
 // log text
 static void initfunc (osjob_t* job) {
@@ -86,11 +89,11 @@ int main(void) {
 	char selecAntenna[4];
 	char regiones[20];
 
-	sqlite3 *db;
 	int rc;
 	char *zErrMsg = 0;
 	char *sql;
-	const char* data = "Callback function called";
+
+	tabla->numEPC = 0;
 
 	/* Open database */
 	rc = sqlite3_open("test.db", &db);
@@ -102,13 +105,17 @@ int main(void) {
 		fprintf(stderr, "Opened database successfully\n");
 	}
 
-	sql = "CREATE TABLE IF NOT EXISTS INVENTORY ("
-			"ID INTEGER PRIMARY KEY, "
-			"TIME INTEGER, "
-			"EPC TEXT, "
-			"TID TEXT, "
-			"RSSI INTEGER, "
-			"READER_SLOT INTEGER);";
+//	sql = "CREATE TABLE IF NOT EXISTS INVENTORY ("
+//			"ID INTEGER PRIMARY KEY, "
+//			"TIME INTEGER, "
+//			"EPC TEXT, "
+//			"TID TEXT, "
+//			"RSSI INTEGER, "
+//			"READER_SLOT INTEGER);";
+
+	sql = "CREATE TABLE IF NOT EXISTS PRUEBAEPC ("
+			"ID INTEGER PRIMARY KEY AUTOINCREMENT,"
+			"EPC TEXT );";
 
 	/* Execute SQL statement */
 	rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
@@ -511,6 +518,7 @@ int main(void) {
 			while (strcmp(msg, "STOP_READING") != 0) {
 				//Init tag count
 				tag_read_count = 0;
+				numeroEPCs = 0;
 
 				//Read tags
 				tmr_ret	= TMR_readIntoArray(rp, 500, &tag_read_count, &tagReads);
@@ -525,7 +533,7 @@ int main(void) {
 
 						trd = &tagReads[i];
 						TMR_bytesToHex(trd->tag.epc, trd->tag.epcByteCount,	epcStr);
-						printf("EPC:%s ant:%d count:%u rssi: %02x\n", epcStr, trd->antenna, trd->readCount, trd->rssi);
+						//printf("EPC:%s ant:%d count:%u rssi: %02x\n", epcStr, trd->antenna, trd->readCount, trd->rssi);
 						//printf("RSSI:%d\n", trd->rssi);
 						fflush(stdout);
 						//Send antena and epc to geo_communications
@@ -543,22 +551,9 @@ int main(void) {
 						send_udp_msg(socket_fd, IP_ADDRESS, RFID_PORT, rfid_report_msg,strlen(epcStr)+2);
 						uint8_t antena = trd->antenna;
 						int32_t rssi = trd->rssi;
-						addTagtoTable(&tabla, epcStr, antena, rssi);
-//						char *sqlInsert;
-//						sprintf(sqlInsert,
-//								"INSERT INTO INVENTORY (ID, TIME, EPC, TID, RSSI) VALUES (%d,%u,%s,%d,%02x);",
-//								i, trd->timestampHigh, epcStr, 0, trd->rssi);
-//						/* Execute SQL statement */
-//						rc = sqlite3_exec(db, sqlInsert, callback, 0,
-//								&zErrMsg);
-//
-//						if (rc != SQLITE_OK) {
-//							fprintf(stderr, "SQL error: %s\n", zErrMsg);
-//							sqlite3_free(zErrMsg);
-//						} else {
-//							fprintf(stdout, "Success\n");
-//						}
+						addTag(epcStr, antena, rssi);
 					}
+					insertintoDB();
 				}
 
 				//Check error count
@@ -588,31 +583,57 @@ int main(void) {
 } // MAIN END
 
 
-void addTagtoTable(struct tablaEPC *tabla, char epc[], uint8_t antena, int32_t rssi) {
 
-	time_t curtime;
-	struct tm *loc_time;
-	curtime = time(NULL);
-	loc_time = localtime(&curtime);
+void addTag(char epc[], uint8_t ant, int32_t rssi) {
 
-	for (int i = 0; i < tabla->numEPC; i++){
-		if (strcmp(tabla[i].EPC, epc)==0){
-			tabla[i].datos[tabla[i].datos->numDatos+1].RSSI = rssi;
-			tabla[i].datos[tabla[i].datos->numDatos+1].antena = antena;
-			strcpy(tabla[i].datos[tabla[i].datos->numDatos+1].hora, asctime(loc_time));
-			//printf("IF: %s %d %x\n", tabla[i].EPC, tabla[i].datos[tabla[i].datos->numDatos+1].antena, tabla[i].datos[tabla[i].datos->numDatos+1].RSSI);
-			tabla[i].datos->numDatos++;
-			tabla->numEPC++;
-			return;
+	//primer EPC encontrado
+	if (numeroEPCs == 0) {
+		strcpy(tabla[0].EPC, epc);
+		tabla[0].datos[0].RSSI = rssi;
+		tabla[0].datos[0].antena = ant;
+		//strcpy(tabla[0].datos[0].hora, asctime(loc_time));
+		tabla[0].numEPC = 1;
+		numeroEPCs++;
+		printf("EPC: %s %d %u %d %d\n",tabla[0].EPC, tabla[0].datos[0].RSSI,tabla[0].datos[0].antena,tabla[0].numEPC, numeroEPCs);
+	} else {
+		//recorrer la tabla para buscar el epc
+		for (int i = 1; i<numeroEPCs; i++)
+		{
+			//si los epcs coinciden, actualizar informacion
+			if (strcmp(epc,tabla[i].EPC) == 0) {
+				printf("COINCIDEN\n");
+			}
 		}
-		return;
+		//si los epcs no coinciden, insertar epc en el numeroEPC
+		printf("FUERA DEL WHILE\n");
+		strcpy(tabla[numeroEPCs].EPC, epc);
+		tabla[numeroEPCs].datos[0].RSSI = rssi;
+		tabla[numeroEPCs].datos[0].antena = ant;
+		numeroEPCs++;
+		printf("NUMERO EPCS %d\n", numeroEPCs);
 	}
-	strcpy(tabla[tabla->numEPC].EPC, epc);
-	tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].antena = antena;
-	tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].RSSI = rssi;
-	strcpy(tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].hora, asctime(loc_time));
-	//printf("FUERA: %s %d %x\n", tabla[tabla->numEPC].EPC, tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].antena, tabla[tabla->numEPC].datos[tabla[tabla->numEPC].datos->numDatos].RSSI);
-	tabla[tabla->numEPC].datos->numDatos++;
-	tabla->numEPC++;
+}
 
+void insertintoDB(){
+
+	printf("INSERT DB\n");
+	char *sqlInsert[70];
+	int rc;
+	char *zErrMsg = 0;
+
+	for (int i = 0; i < numeroEPCs; ++i) {
+		printf("FOR %d\n", i);
+		sprintf(sqlInsert, "INSERT INTO PRUEBAEPC (EPC) VALUES (\"%s\");", tabla[i].EPC);
+		printf("SQLInsert %s\n", sqlInsert);
+		/* Execute SQL statement */
+		rc = sqlite3_exec(db, sqlInsert, callback, 0, &zErrMsg);
+
+		if (rc != SQLITE_OK) {
+			fprintf(stderr, "SQL error: %s\n", zErrMsg);
+			sqlite3_free(zErrMsg);
+		} else {
+			fprintf(stdout, "Success\n");
+		}
+		ID++;
+	}
 }
