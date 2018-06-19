@@ -41,7 +41,6 @@ uint8_t ant_count = 0;
 struct tablaEPC tabla[500];
 sqlite3 *db;
 int numeroEPCs;
-int ID = 0;
 
 // log text
 static void initfunc (osjob_t* job) {
@@ -522,6 +521,7 @@ int main(void) {
 
 				//Read tags
 				tmr_ret	= TMR_readIntoArray(rp, 500, &tag_read_count, &tagReads);
+				printf("tag read count %d\n", tag_read_count);
 				if (tmr_ret != TMR_SUCCESS) {
 					printf("geo_rfid: ERROR READING TAGS INTO ARRAY");
 					fflush(stdout);
@@ -553,9 +553,8 @@ int main(void) {
 						int32_t rssi = trd->rssi;
 						addTag(epcStr, antena, rssi);
 					}
-					insertintoDB();
 				}
-
+				insertintoDB();
 				//Check error count
 				if (errors > MAX_ERRORS) {
 #ifdef RFID_DEBUG
@@ -586,32 +585,13 @@ int main(void) {
 
 void addTag(char epc[], uint8_t ant, int32_t rssi) {
 
-	//primer EPC encontrado
-	if (numeroEPCs == 0) {
-		strcpy(tabla[0].EPC, epc);
-		tabla[0].datos[0].RSSI = rssi;
-		tabla[0].datos[0].antena = ant;
-		//strcpy(tabla[0].datos[0].hora, asctime(loc_time));
-		tabla[0].numEPC = 1;
-		numeroEPCs++;
-		printf("EPC: %s %d %u %d %d\n",tabla[0].EPC, tabla[0].datos[0].RSSI,tabla[0].datos[0].antena,tabla[0].numEPC, numeroEPCs);
-	} else {
-		//recorrer la tabla para buscar el epc
-		for (int i = 1; i<numeroEPCs; i++)
-		{
-			//si los epcs coinciden, actualizar informacion
-			if (strcmp(epc,tabla[i].EPC) == 0) {
-				printf("COINCIDEN\n");
-			}
-		}
-		//si los epcs no coinciden, insertar epc en el numeroEPC
-		printf("FUERA DEL WHILE\n");
-		strcpy(tabla[numeroEPCs].EPC, epc);
-		tabla[numeroEPCs].datos[0].RSSI = rssi;
-		tabla[numeroEPCs].datos[0].antena = ant;
-		numeroEPCs++;
-		printf("NUMERO EPCS %d\n", numeroEPCs);
-	}
+	printf("NUMERO EPCS %d EPC %s\n", numeroEPCs, epc);
+	strcpy(tabla[numeroEPCs].EPC, epc);
+	tabla[numeroEPCs].datos[0].RSSI = rssi;
+	tabla[numeroEPCs].datos[0].antena = ant;
+	//strcpy(tabla[0].datos[0].hora, asctime(loc_time));
+	tabla[numeroEPCs].numEPC = numeroEPCs;
+	numeroEPCs++;
 }
 
 void insertintoDB(){
@@ -634,6 +614,10 @@ void insertintoDB(){
 		} else {
 			fprintf(stdout, "Success\n");
 		}
-		ID++;
 	}
+
+	//	sprintf(sqlInsert,
+	//	"INSERT INTO INVENTORY (ID, TIME, EPC, TID, RSSI) VALUES (%d,%u,%s,%d,%02x);",
+	//	i, trd->timestampHigh, epcStr, 0, trd->rssi);
+
 }
