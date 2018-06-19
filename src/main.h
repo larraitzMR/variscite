@@ -8,7 +8,7 @@
 
 struct datos {
 	int numDatos;
-	char hora[8];
+	char hora[9];
 	uint8_t antena;
 	int32_t RSSI;
 };

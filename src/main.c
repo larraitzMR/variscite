@@ -114,7 +114,8 @@ int main(void) {
 
 	sql = "CREATE TABLE IF NOT EXISTS PRUEBAEPC ("
 			"ID INTEGER PRIMARY KEY AUTOINCREMENT,"
-			"EPC TEXT );";
+			"EPC TEXT ,"
+			"HORA TEXT);";
 
 	/* Execute SQL statement */
 	rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
@@ -585,13 +586,22 @@ int main(void) {
 
 void addTag(char epc[], uint8_t ant, int32_t rssi) {
 
-	printf("NUMERO EPCS %d EPC %s\n", numeroEPCs, epc);
+	char hora[9];
+	time_t rawtime;
+	struct tm * timeinfo;
+
+	time (&rawtime);
+	timeinfo = localtime (&rawtime);
+	strftime (hora,9,"%T",timeinfo);
+
+	strcpy(tabla[numeroEPCs].datos[1].hora, hora);
 	strcpy(tabla[numeroEPCs].EPC, epc);
-	tabla[numeroEPCs].datos[0].RSSI = rssi;
-	tabla[numeroEPCs].datos[0].antena = ant;
-	//strcpy(tabla[0].datos[0].hora, asctime(loc_time));
+	tabla[numeroEPCs].datos[1].RSSI = rssi;
+	tabla[numeroEPCs].datos[1].antena = ant;
+	//printf("EPC %s RSSI %d ANT %u HORA %s ", tabla[numeroEPCs].EPC, tabla[numeroEPCs].datos[1].RSSI, tabla[numeroEPCs].datos[1].antena, tabla[numeroEPCs].datos[1].hora);
 	tabla[numeroEPCs].numEPC = numeroEPCs;
 	numeroEPCs++;
+	//printf("NUMERO EPCS %d\n", numeroEPCs);
 }
 
 void insertintoDB(){
@@ -602,8 +612,8 @@ void insertintoDB(){
 	char *zErrMsg = 0;
 
 	for (int i = 0; i < numeroEPCs; ++i) {
-		printf("FOR %d\n", i);
-		sprintf(sqlInsert, "INSERT INTO PRUEBAEPC (EPC) VALUES (\"%s\");", tabla[i].EPC);
+		//printf("FOR %d %s %s\n", i, tabla[i].EPC, tabla[i].datos[0].hora);
+		sprintf(sqlInsert, "INSERT INTO PRUEBAEPC (EPC, HORA) VALUES (\"%s\" , \"%s\");", tabla[i].EPC, tabla[i].datos[1].hora);
 		printf("SQLInsert %s\n", sqlInsert);
 		/* Execute SQL statement */
 		rc = sqlite3_exec(db, sqlInsert, callback, 0, &zErrMsg);
@@ -615,9 +625,4 @@ void insertintoDB(){
 			fprintf(stdout, "Success\n");
 		}
 	}
-
-	//	sprintf(sqlInsert,
-	//	"INSERT INTO INVENTORY (ID, TIME, EPC, TID, RSSI) VALUES (%d,%u,%s,%d,%02x);",
-	//	i, trd->timestampHigh, epcStr, 0, trd->rssi);
-
 }
