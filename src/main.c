@@ -22,6 +22,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
+#include <linux/spi/spidev.h>
+#include "spi.h"
 #include "lmic/lmic.h"
 #include "sim808.h"
 #include "m6e/tm_reader.h"
@@ -41,6 +43,7 @@ uint8_t ant_count = 0;
 struct tablaEPC tabla[500];
 sqlite3 *db;
 int numeroEPCs;
+
 
 // log text
 static void initfunc (osjob_t* job) {
@@ -261,9 +264,10 @@ int main(void) {
 	while (strcmp(msg, "DISCONNECT") != 0) {
 
 		read_udp_message(socket_fd, msg, strlen(msg));
-		printf("msg: %s\n", msg);
+
 
 		if (strncmp(msg, "POWER_MINMAX",12) == 0) {
+			printf("msg: %s\n", msg);
 			dato = getParam(rp, TMR_PARAM_RADIO_POWERMAX);
 			float max = (uint16_t) dato / 100;
 			powerMinMax[0] = max;
@@ -276,6 +280,7 @@ int main(void) {
 			bzero(powerMinMax, sizeof(powerMinMax));
 
 		} else if (strcmp(msg, "CON_ANT_PORTS") == 0) {
+			printf("msg: %s\n", msg);
 			getConnectedAntennaPorts(rp, puertosC);
 
 			puertosConect[0] = puertosC[0];
@@ -288,6 +293,7 @@ int main(void) {
 			bzero(puertosC, sizeof(puertosC));
 
 		} else if (strcmp(msg, "ANT_PORTS") == 0) {
+			printf("msg: %s\n", msg);
 			getAntennaPorts(rp, puertos);
 
 			puertosAnt[0] = puertos[0];
@@ -300,12 +306,14 @@ int main(void) {
 			bzero(puertos, sizeof(puertos));
 
 		} else if (strcmp(msg, "IS_ANT_CHECK_PORT_EN") == 0) {
+			printf("msg: %s\n", msg);
 			dato = getParam(rp, TMR_PARAM_ANTENNA_CHECKPORT);
 			antenaCheck[0] = (int) dato;
 			enviar_udp_msg(socket_fd, antenaCheck, PARAMS_PORT);
 			bzero(antenaCheck, sizeof(antenaCheck));
 
 		} else if (strncmp(msg, "SET_ANT_CHECK_PORT", 18) == 0) {
+			printf("msg: %s\n", msg);
 			char* str = NULL;
 			char* busca = "true";
 			bool value;
@@ -324,6 +332,7 @@ int main(void) {
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_ANTENNA_CHECKPORT, &value);
 
 		} else if (strcmp(msg, "GET_POWER") == 0) {
+			printf("msg: %s\n", msg);
 			dato = getParam(rp, TMR_PARAM_RADIO_READPOWER);
 			int pow = (uint32_t) dato / 100;
 			int dec = (uint32_t) dato % 100;
@@ -335,6 +344,7 @@ int main(void) {
 			bzero(power, sizeof(power));
 
 		} else if (strncmp(msg, "SET_POWER", 9) == 0) {
+			printf("msg: %s\n", msg);
 			int longitud = strlen(msg) - 9;
 			char *nuevo = (char*) malloc(sizeof(char) * (longitud + 1));
 			nuevo[longitud] = '\0';
@@ -347,6 +357,7 @@ int main(void) {
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_RADIO_WRITEPOWER, &value);
 
 		} else if (strcmp(msg, "GET_SEL_ANT") == 0) {
+			printf("msg: %s\n", msg);
 			getSelectedAntennas(rp, selAnt);
 			selecAntenna[0] = selAnt[0];
 			selecAntenna[1] = selAnt[1];
@@ -358,6 +369,7 @@ int main(void) {
 			bzero(selAnt, sizeof(selAnt));
 
 		} else if (strncmp(msg, "SET_SEL_ANT", 11) == 0) {
+			printf("msg: %s\n", msg);
 			TMR_ReadPlan plan;
 			char *nuevoDato;
 			TMR_uint8List listaAntenas = { NULL, 0, 0 };
@@ -372,6 +384,7 @@ int main(void) {
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_READ_PLAN, &plan);
 
 		} else if (strcmp(msg, "GET_INFO") == 0) {
+			printf("msg: %s\n", msg);
 			char info[22];
 
 			getReaderInfo(rp, TMR_PARAM_VERSION_MODEL, info);
@@ -398,6 +411,7 @@ int main(void) {
 			enviar_udp_msg(socket_fd, info, PARAMS_PORT);
 			bzero(info, sizeof(info));
 		} else if (strcmp(msg, "GET_ADV_OPT") == 0) {
+			printf("msg: %s\n", msg);
 
 			dato = getParam(rp, TMR_PARAM_REGION_ID);
 			//printf("REGION: %s\n", dato);
@@ -435,6 +449,7 @@ int main(void) {
 			enviar_udp_msg(socket_fd, (char *) dato, PARAMS_PORT);
 
 		} else if (strncmp(msg, "SET_REGION",10) == 0) {
+			printf("msg: %s\n", msg);
 			int longitud = strlen(msg) - 11;
 			char *nuevo = (char*) malloc(sizeof(char) * (longitud + 1));
 			nuevo[longitud] = '\0';
@@ -445,6 +460,7 @@ int main(void) {
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_REGION_ID, &value);
 
 		} else if (strcmp(msg, "GET_SUPPORTED_REGIONS") == 0) {
+			printf("msg: %s\n", msg);
 			getRegionNames(rp, reg);
 			for(int i = 0; i<20; i++) {
 				regiones[i] = reg[i];
@@ -454,6 +470,7 @@ int main(void) {
 			bzero(regiones, sizeof(regiones));
 
 		} else if (strncmp(msg, "SET_TARI", 8) == 0) {
+			printf("msg: %s\n", msg);
 			int longitud = strlen(msg) - 9;
 			char *nuevo = (char*) malloc(sizeof(char) * (longitud + 1));
 			nuevo[longitud] = '\0';
@@ -466,6 +483,7 @@ int main(void) {
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_GEN2_TARI, &value);
 
 		} else if (strncmp(msg, "SET_BLF", 7) == 0) {
+			printf("msg: %s\n", msg);
 			int longitud = strlen(msg) - 8;
 			char *nuevo = (char*) malloc(sizeof(char) * (longitud + 1));
 			nuevo[longitud] = '\0';
@@ -478,6 +496,7 @@ int main(void) {
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_GEN2_BLF, &value);
 
 		} else if (strncmp(msg, "SET_M",5) == 0) {
+			printf("msg: %s\n", msg);
 			int longitud = strlen(msg) - 6;
 			char *nuevo = (char*) malloc(sizeof(char) * (longitud + 1));
 			nuevo[longitud] = '\0';
@@ -490,8 +509,10 @@ int main(void) {
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_GEN2_TAGENCODING, &value);
 
 		} else if (strncmp(msg, "SET_Q", 5) == 0) {
+			printf("msg: %s\n", msg);
 
 		} else if (strncmp(msg, "SET_SESSION", 11) == 0) {
+			printf("msg: %s\n", msg);
 			int longitud = strlen(msg) - 12;
 			char *nuevo = (char*) malloc(sizeof(char) * (longitud + 1));
 			nuevo[longitud] = '\0';
@@ -503,6 +524,7 @@ int main(void) {
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_GEN2_SESSION, &value);
 
 		} else if (strncmp(msg, "SET_TARGET", 10) == 0) {
+			printf("msg: %s\n", msg);
 			int longitud = strlen(msg) - 11;
 			char *nuevo = (char*) malloc(sizeof(char) * (longitud + 1));
 			nuevo[longitud] = '\0';
@@ -515,6 +537,7 @@ int main(void) {
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_GEN2_TARGET, &value);
 
 		} else if (strcmp(msg, "START_READING") == 0) {
+			printf("msg: %s\n", msg);
 			while (strcmp(msg, "STOP_READING") != 0) {
 				//Init tag count
 				tag_read_count = 0;
@@ -556,6 +579,7 @@ int main(void) {
 					}
 				}
 				insertintoDB();
+				selectDataDB();
 				//Check error count
 				if (errors > MAX_ERRORS) {
 #ifdef RFID_DEBUG
@@ -606,7 +630,7 @@ void addTag(char epc[], uint8_t ant, int32_t rssi) {
 
 void insertintoDB(){
 
-	printf("INSERT DB\n");
+//	printf("INSERT DB\n");
 	char *sqlInsert[70];
 	int rc;
 	char *zErrMsg = 0;
@@ -614,7 +638,7 @@ void insertintoDB(){
 	for (int i = 0; i < numeroEPCs; ++i) {
 		//printf("FOR %d %s %s\n", i, tabla[i].EPC, tabla[i].datos[0].hora);
 		sprintf(sqlInsert, "INSERT INTO PRUEBAEPC (EPC, HORA) VALUES (\"%s\" , \"%s\");", tabla[i].EPC, tabla[i].datos[1].hora);
-		printf("SQLInsert %s\n", sqlInsert);
+//		printf("SQLInsert %s\n", sqlInsert);
 		/* Execute SQL statement */
 		rc = sqlite3_exec(db, sqlInsert, callback, 0, &zErrMsg);
 
@@ -624,5 +648,57 @@ void insertintoDB(){
 		} else {
 			fprintf(stdout, "Success\n");
 		}
+	}
+}
+
+static const char *device = "/dev/spidev0.0";
+static uint32_t speed = 115200;
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+
+static int callbackSelect(void *data, int argc, char **argv, char **azColName){
+   int i;
+   //fprintf(stderr, "%s: ", (const char*)data);
+   char epc[24];
+   char ID[4];
+
+   openspi(device, speed);
+
+   //printf("Numero argumentos: %d\n", argc);
+
+   for(i = 0; i<argc; i++){
+      printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+   }
+   //strcpy(ID,argv[0]);
+   strcpy(epc,argv[1]);
+   //printf("%s", epc);
+//   writetospi(4,ID,24,epc);
+   writetospi(0,"",24,epc);
+   bzero(epc, sizeof(epc));
+   usleep(500000);
+
+   printf("\n");
+   closespi();
+   return 0;
+}
+
+void selectDataDB(){
+
+//	printf("SELECT DB\n");
+	int rc;
+	char *zErrMsg = 0;
+	char *sql;
+	const char* data = "Callback function called";
+
+	/* Create SQL statement */
+	sql = "SELECT * from PRUEBAEPC";
+
+	/* Execute SQL statement */
+	rc = sqlite3_exec(db, sql, callbackSelect, (void*) data, &zErrMsg);
+
+	if (rc != SQLITE_OK) {
+		fprintf(stderr, "SQL error: %s\n", zErrMsg);
+		sqlite3_free(zErrMsg);
+	} else {
+		fprintf(stdout, "Operation done successfully\n");
 	}
 }
