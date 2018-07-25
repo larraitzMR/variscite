@@ -322,11 +322,11 @@ int main(void) {
 
 			if (str) {
 				value = true;
-				printf("TRUE");
+				printf("TRUE\n");
 				fflush(stdout);
 			} else {
 				value = false;
-				printf("FALSE");
+				printf("FALSE\n");
 				fflush(stdout);
 			}
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_ANTENNA_CHECKPORT, &value);
@@ -464,7 +464,7 @@ int main(void) {
 			getRegionNames(rp, reg);
 			for(int i = 0; i<20; i++) {
 				regiones[i] = reg[i];
-				printf("Reg Nums: %d", reg[i]);
+				//printf("Reg Nums: %d", reg[i]);
 			}
 			enviar_udp_msg(socket_fd, regiones, PARAMS_PORT);
 			bzero(regiones, sizeof(regiones));
@@ -537,8 +537,8 @@ int main(void) {
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_GEN2_TARGET, &value);
 
 		} else if (strcmp(msg, "START_READING") == 0) {
-			printf("msg: %s\n", msg);
 			while (strcmp(msg, "STOP_READING") != 0) {
+				printf("msg: %s\n", msg);
 				//Init tag count
 				tag_read_count = 0;
 				numeroEPCs = 0;
@@ -674,7 +674,7 @@ static int callbackSelect(void *data, int argc, char **argv, char **azColName){
 //   writetospi(4,ID,24,epc);
    writetospi(0,"",24,epc);
    bzero(epc, sizeof(epc));
-   usleep(500000);
+   usleep(750000);
 
    printf("\n");
    closespi();

@@ -29,6 +29,7 @@ void printU8List(TMR_uint8List *list, int *ports) {
 		printf("...");
 	}
 	putchar(']');
+	printf("\n");
 }
 
 static bool
@@ -117,7 +118,8 @@ void getRegionNames(TMR_Reader *rp, int *reg)
 	if (value.len > value.max){
 		printf("...");
 	}
-	printf("]\n");
+	printf("]");
+	printf("\n");
 }
 
 
@@ -155,8 +157,11 @@ void getAntennaList(char *lchar, TMR_uint8List *list) {
 	putchar('[');
 	for (p = strtok(lchar + 1, " "); p; p = strtok(NULL, " ")) {
 		int a = atoi(p);
-		list->list[list->len] = a;
-		list->len++;
+		if (a == 0){}
+		else {
+			list->list[list->len] = a;
+			list->len++;
+		}
 		printf("%u%s", list->list[i], ((i + 1) == list->len) ? "" : ",");
 		i++;
 	}
@@ -359,4 +364,3 @@ void **getParam(TMR_Reader *rp, TMR_Param key) {
 		printf("Error retrieving value: %s\n", TMR_strerr(rp, ret));
 	}
 }
-
