@@ -538,14 +538,14 @@ int main(void) {
 
 		} else if (strcmp(msg, "START_READING") == 0) {
 			while (strcmp(msg, "STOP_READING") != 0) {
-				printf("msg: %s\n", msg);
+				//printf("msg: %s\n", msg);
 				//Init tag count
 				tag_read_count = 0;
 				numeroEPCs = 0;
 
 				//Read tags
 				tmr_ret	= TMR_readIntoArray(rp, 500, &tag_read_count, &tagReads);
-				printf("tag read count %d\n", tag_read_count);
+				//printf("tag read count %d\n", tag_read_count);
 				if (tmr_ret != TMR_SUCCESS) {
 					printf("geo_rfid: ERROR READING TAGS INTO ARRAY");
 					fflush(stdout);
@@ -579,7 +579,7 @@ int main(void) {
 					}
 				}
 				insertintoDB();
-				selectDataDB();
+
 				//Check error count
 				if (errors > MAX_ERRORS) {
 #ifdef RFID_DEBUG
@@ -590,6 +590,7 @@ int main(void) {
 				}
 				read_udp_message(socket_fd, msg, strlen(msg));
 			}
+			selectDataDB();
 		}
 
 //		//Configuración gprs
@@ -658,10 +659,9 @@ static uint32_t speed = 115200;
 static int callbackSelect(void *data, int argc, char **argv, char **azColName){
    int i;
    //fprintf(stderr, "%s: ", (const char*)data);
-   char epc[24];
+   char epc[26];
    char ID[4];
 
-   openspi(device, speed);
 
    //printf("Numero argumentos: %d\n", argc);
 
@@ -670,14 +670,14 @@ static int callbackSelect(void *data, int argc, char **argv, char **azColName){
    }
    //strcpy(ID,argv[0]);
    strcpy(epc,argv[1]);
-   //printf("%s", epc);
+   sprintf(epc, "%s##", epc);
+   printf("%s", epc);
 //   writetospi(4,ID,24,epc);
-   writetospi(0,"",24,epc);
+   writetospi(0,"",26,epc);
    bzero(epc, sizeof(epc));
-   usleep(750000);
+   usleep(100000);
 
    printf("\n");
-   closespi();
    return 0;
 }
 
@@ -692,6 +692,8 @@ void selectDataDB(){
 	/* Create SQL statement */
 	sql = "SELECT * from PRUEBAEPC";
 
+	openspi(device, speed);
+
 	/* Execute SQL statement */
 	rc = sqlite3_exec(db, sql, callbackSelect, (void*) data, &zErrMsg);
 
@@ -701,4 +703,6 @@ void selectDataDB(){
 	} else {
 		fprintf(stdout, "Operation done successfully\n");
 	}
+
+	closespi();
 }
