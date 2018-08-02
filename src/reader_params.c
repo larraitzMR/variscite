@@ -131,7 +131,7 @@ int getRegionNumber(char * name)
 	for(i = 0; i < len; ++i)
 	{
 	    if(strcmp(regions[i], name)==0){
-	    	printf("Numero Region: %d", i);
+	    	printf("Numero Region: %d\n", i);
 	    	return i;
 	    }
 	}
@@ -364,3 +364,4 @@ void **getParam(TMR_Reader *rp, TMR_Param key) {
 		printf("Error retrieving value: %s\n", TMR_strerr(rp, ret));
 	}
 }
+

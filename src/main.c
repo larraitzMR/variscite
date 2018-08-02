@@ -20,6 +20,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include <unistd.h>
 #include <time.h>
 #include <linux/spi/spidev.h>
@@ -117,8 +118,9 @@ int main(void) {
 
 	sql = "CREATE TABLE IF NOT EXISTS PRUEBAEPC ("
 			"ID INTEGER PRIMARY KEY AUTOINCREMENT,"
-			"EPC TEXT ,"
-			"HORA TEXT);";
+			"EPC TEXT,"
+			"HORA TEXT,"
+			"ENVIADO INTEGER);";
 
 	/* Execute SQL statement */
 	rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
@@ -129,7 +131,6 @@ int main(void) {
 	} else {
 		fprintf(stdout, "Success\n");
 	}
-
 
 //	//Init GPRS
 //	int fd_sim808 = 0;
@@ -240,6 +241,12 @@ int main(void) {
 		fflush(stdout);
 		exit(1);
 	}
+
+	pthread_t thread_id;
+	printf("Before Thread\n");
+	pthread_create(&thread_id, NULL, funcionDelHilo, NULL);
+	//	pthread_join(thread_id, NULL);
+	printf("After Thread\n");
 
 	//Configure udp socket
 	int socket_fd = configure_udp_socket(RFID_PORT);
@@ -590,7 +597,7 @@ int main(void) {
 				}
 				read_udp_message(socket_fd, msg, strlen(msg));
 			}
-			selectDataDB();
+//			selectDataDB();
 		}
 
 //		//Configuración gprs
@@ -607,7 +614,15 @@ int main(void) {
 	return EXIT_SUCCESS;
 } // MAIN END
 
+void *funcionDelHilo (void *parametro)
+{
+	while(1){
+		printf("Funcion del hilo\n");
+		selectDataDB();
+		sleep(10);
+	}
 
+}
 
 void addTag(char epc[], uint8_t ant, int32_t rssi) {
 
@@ -638,7 +653,7 @@ void insertintoDB(){
 
 	for (int i = 0; i < numeroEPCs; ++i) {
 		//printf("FOR %d %s %s\n", i, tabla[i].EPC, tabla[i].datos[0].hora);
-		sprintf(sqlInsert, "INSERT INTO PRUEBAEPC (EPC, HORA) VALUES (\"%s\" , \"%s\");", tabla[i].EPC, tabla[i].datos[1].hora);
+		sprintf(sqlInsert, "INSERT INTO PRUEBAEPC (EPC, HORA, ENVIADO) VALUES (\"%s\" , \"%s\", 0);", tabla[i].EPC, tabla[i].datos[1].hora);
 //		printf("SQLInsert %s\n", sqlInsert);
 		/* Execute SQL statement */
 		rc = sqlite3_exec(db, sqlInsert, callback, 0, &zErrMsg);
@@ -659,7 +674,7 @@ static uint32_t speed = 115200;
 static int callbackSelect(void *data, int argc, char **argv, char **azColName){
    int i;
    //fprintf(stderr, "%s: ", (const char*)data);
-   char epc[26];
+   char epc[24];
    char ID[4];
 
 
@@ -670,10 +685,10 @@ static int callbackSelect(void *data, int argc, char **argv, char **azColName){
    }
    //strcpy(ID,argv[0]);
    strcpy(epc,argv[1]);
-   sprintf(epc, "%s##", epc);
+   sprintf(epc, "%s", epc);
    printf("%s", epc);
 //   writetospi(4,ID,24,epc);
-   writetospi(0,"",26,epc);
+   writetospi(0,"",24,epc);
    bzero(epc, sizeof(epc));
    usleep(100000);
 
