@@ -45,11 +45,10 @@ struct tablaEPC tabla[500];
 sqlite3 *db;
 int numeroEPCs;
 
-
 // log text
-static void initfunc (osjob_t* job) {
-    // reschedule job every second
-    os_setTimedCallback(job, os_getTime()+sec2osticks(1), initfunc);
+static void initfunc(osjob_t* job) {
+	// reschedule job every second
+	os_setTimedCallback(job, os_getTime() + sec2osticks(1), initfunc);
 }
 
 static int callback(void *data, int argc, char **argv, char **azColName) {
@@ -177,7 +176,8 @@ int main(void) {
 	//Connect to the reader
 	tmr_ret = TMR_connect(rp);
 	if (tmr_ret != TMR_SUCCESS) {
-		printf("geo_rfid: Error connecting reader: %s\n", TMR_strerr(rp, tmr_ret));
+		printf("geo_rfid: Error connecting reader: %s\n",
+				TMR_strerr(rp, tmr_ret));
 		fflush(stdout);
 		exit(1);
 	}
@@ -242,12 +242,6 @@ int main(void) {
 		exit(1);
 	}
 
-	pthread_t thread_id;
-	printf("Before Thread\n");
-	pthread_create(&thread_id, NULL, funcionDelHilo, NULL);
-	//	pthread_join(thread_id, NULL);
-	printf("After Thread\n");
-
 	//Configure udp socket
 	int socket_fd = configure_udp_socket(RFID_PORT);
 	if (socket_fd < 0) {
@@ -260,11 +254,15 @@ int main(void) {
 	}
 
 	enviar_udp_msg(socket_fd, Ready, COMMUNICATIONS_PORT);
-	while (strncmp(msg, "CONECTADO",9) != 0) {
+	while (strncmp(msg, "CONECTADO", 9) != 0) {
 		read_udp_message(socket_fd, msg, strlen(msg));
 		printf("msg: %s\n", msg);
 		enviar_udp_msg(socket_fd, Ready, COMMUNICATIONS_PORT);
 	}
+
+	pthread_t thread_id;
+	pthread_create(&thread_id, NULL, funcionDelHilo, NULL);
+	//	pthread_join(thread_id, NULL);
 
 	//TODO: en la funcion send_udp_msg esta quitado el checksum para que vaya bien
 
@@ -272,8 +270,7 @@ int main(void) {
 
 		read_udp_message(socket_fd, msg, strlen(msg));
 
-
-		if (strncmp(msg, "POWER_MINMAX",12) == 0) {
+		if (strncmp(msg, "POWER_MINMAX", 12) == 0) {
 			printf("msg: %s\n", msg);
 			dato = getParam(rp, TMR_PARAM_RADIO_POWERMAX);
 			float max = (uint16_t) dato / 100;
@@ -455,7 +452,7 @@ int main(void) {
 			fflush(stdout);
 			enviar_udp_msg(socket_fd, (char *) dato, PARAMS_PORT);
 
-		} else if (strncmp(msg, "SET_REGION",10) == 0) {
+		} else if (strncmp(msg, "SET_REGION", 10) == 0) {
 			printf("msg: %s\n", msg);
 			int longitud = strlen(msg) - 11;
 			char *nuevo = (char*) malloc(sizeof(char) * (longitud + 1));
@@ -469,7 +466,7 @@ int main(void) {
 		} else if (strcmp(msg, "GET_SUPPORTED_REGIONS") == 0) {
 			printf("msg: %s\n", msg);
 			getRegionNames(rp, reg);
-			for(int i = 0; i<20; i++) {
+			for (int i = 0; i < 20; i++) {
 				regiones[i] = reg[i];
 				//printf("Reg Nums: %d", reg[i]);
 			}
@@ -502,7 +499,7 @@ int main(void) {
 			printf("BLF ID: %d\n", value);
 			tmr_ret = TMR_paramSet(rp, TMR_PARAM_GEN2_BLF, &value);
 
-		} else if (strncmp(msg, "SET_M",5) == 0) {
+		} else if (strncmp(msg, "SET_M", 5) == 0) {
 			printf("msg: %s\n", msg);
 			int longitud = strlen(msg) - 6;
 			char *nuevo = (char*) malloc(sizeof(char) * (longitud + 1));
@@ -551,7 +548,8 @@ int main(void) {
 				numeroEPCs = 0;
 
 				//Read tags
-				tmr_ret	= TMR_readIntoArray(rp, 500, &tag_read_count, &tagReads);
+				tmr_ret = TMR_readIntoArray(rp, 500, &tag_read_count,
+						&tagReads);
 				//printf("tag read count %d\n", tag_read_count);
 				if (tmr_ret != TMR_SUCCESS) {
 					printf("geo_rfid: ERROR READING TAGS INTO ARRAY");
@@ -563,7 +561,8 @@ int main(void) {
 						char epcStr[128];
 
 						trd = &tagReads[i];
-						TMR_bytesToHex(trd->tag.epc, trd->tag.epcByteCount,	epcStr);
+						TMR_bytesToHex(trd->tag.epc, trd->tag.epcByteCount,
+								epcStr);
 						//printf("EPC:%s ant:%d count:%u rssi: %02x\n", epcStr, trd->antenna, trd->readCount, trd->rssi);
 						//printf("RSSI:%d\n", trd->rssi);
 						fflush(stdout);
@@ -576,10 +575,11 @@ int main(void) {
 						rfid_report_msg[1] = trd->rssi;
 						int j = 0;
 						for (j = 0; j < strlen(epcStr); j++) {
-							rfid_report_msg[j+2] = epcStr[j];
+							rfid_report_msg[j + 2] = epcStr[j];
 						}
 
-						send_udp_msg(socket_fd, IP_ADDRESS, RFID_PORT, rfid_report_msg,strlen(epcStr)+2);
+						send_udp_msg(socket_fd, IP_ADDRESS, RFID_PORT,
+								rfid_report_msg, strlen(epcStr) + 2);
 						uint8_t antena = trd->antenna;
 						int32_t rssi = trd->rssi;
 						addTag(epcStr, antena, rssi);
@@ -614,25 +614,15 @@ int main(void) {
 	return EXIT_SUCCESS;
 } // MAIN END
 
-void *funcionDelHilo (void *parametro)
-{
-	while(1){
-		printf("Funcion del hilo\n");
-		selectDataDB();
-		sleep(10);
-	}
-
-}
-
 void addTag(char epc[], uint8_t ant, int32_t rssi) {
 
 	char hora[9];
 	time_t rawtime;
 	struct tm * timeinfo;
 
-	time (&rawtime);
-	timeinfo = localtime (&rawtime);
-	strftime (hora,9,"%T",timeinfo);
+	time(&rawtime);
+	timeinfo = localtime(&rawtime);
+	strftime(hora, 9, "%T", timeinfo);
 
 	strcpy(tabla[numeroEPCs].datos[1].hora, hora);
 	strcpy(tabla[numeroEPCs].EPC, epc);
@@ -644,7 +634,54 @@ void addTag(char epc[], uint8_t ant, int32_t rssi) {
 	//printf("NUMERO EPCS %d\n", numeroEPCs);
 }
 
-void insertintoDB(){
+static const char *device = "/dev/spidev0.0";
+static uint32_t speed = 115200;
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+#define UART_ARDUINO 	"/dev/ttymxc2"
+char *ReadyMsg = "READY";
+
+	char headerBuffer[24];
+	char readBuffer[24];
+//	char *headerBuffer = "";
+//	char *readBuffer = "";
+//	char *headerBuffer = (char*)malloc(10);
+//	char *readBuffer = (char*)malloc(10);
+//	unsigned char *headerBuffer[24];
+//	unsigned char *readBuffer[24];
+
+void *funcionDelHilo(void *parametro) {
+	int fd_uart;
+
+	fd_uart = uart_open(UART_ARDUINO, 115200, "8N1");
+
+	while (1) {
+
+		bzero(&headerBuffer, sizeof(headerBuffer));
+		//printf("Funcion del hilo\n");
+//		selectDataDB();
+		//leer spi
+		//openspi(device, speed);
+		uart_write_buffer(fd_uart, ReadyMsg, 5);
+		//writetospi(0, "HOLA HOLA", 24, "");
+		//readfromspi(*headerBuffer,24,*readBuffer,24);
+		uart_read(fd_uart, headerBuffer, 24);
+//		//guardar lo recibido
+		printf("Header %s\n", headerBuffer);
+//		printf("Read %s\n", readBuffer);
+//		closespi();
+		//update enviado
+		//updateDB()
+		sleep(1);
+
+//		fflush(headerBuffer);
+//		fflush(readBuffer);
+
+//		bzero(&headerBuffer, sizeof(headerBuffer));
+//		bzero(&readBuffer, sizeof(readBuffer));
+	}
+}
+
+void insertintoDB() {
 
 //	printf("INSERT DB\n");
 	char *sqlInsert[70];
@@ -653,7 +690,9 @@ void insertintoDB(){
 
 	for (int i = 0; i < numeroEPCs; ++i) {
 		//printf("FOR %d %s %s\n", i, tabla[i].EPC, tabla[i].datos[0].hora);
-		sprintf(sqlInsert, "INSERT INTO PRUEBAEPC (EPC, HORA, ENVIADO) VALUES (\"%s\" , \"%s\", 0);", tabla[i].EPC, tabla[i].datos[1].hora);
+		sprintf(sqlInsert,
+				"INSERT INTO PRUEBAEPC (EPC, HORA, ENVIADO) VALUES (\"%s\" , \"%s\", 0);",
+				tabla[i].EPC, tabla[i].datos[1].hora);
 //		printf("SQLInsert %s\n", sqlInsert);
 		/* Execute SQL statement */
 		rc = sqlite3_exec(db, sqlInsert, callback, 0, &zErrMsg);
@@ -667,36 +706,43 @@ void insertintoDB(){
 	}
 }
 
-static const char *device = "/dev/spidev0.0";
-static uint32_t speed = 115200;
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+static int callbackSelect(void *data, int argc, char **argv, char **azColName) {
+	int i;
+	//fprintf(stderr, "%s: ", (const char*)data);
+	char epc[24];
+	char ID[4];
+	char *headerBuffer[24];
+	char *readBuffer[24];
 
-static int callbackSelect(void *data, int argc, char **argv, char **azColName){
-   int i;
-   //fprintf(stderr, "%s: ", (const char*)data);
-   char epc[24];
-   char ID[4];
+	//printf("Numero argumentos: %d\n", argc);
 
-
-   //printf("Numero argumentos: %d\n", argc);
-
-   for(i = 0; i<argc; i++){
-      printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-   }
-   //strcpy(ID,argv[0]);
-   strcpy(epc,argv[1]);
-   sprintf(epc, "%s", epc);
-   printf("%s", epc);
+	for (i = 0; i < argc; i++) {
+		//printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+	}
+	//strcpy(ID,argv[0]);
+	strcpy(epc, argv[1]);
+	sprintf(epc, "%s", epc);
+    printf("%s\n", epc);
 //   writetospi(4,ID,24,epc);
-   writetospi(0,"",24,epc);
-   bzero(epc, sizeof(epc));
-   usleep(100000);
+	writetospi(0, "", 24, epc);
 
-   printf("\n");
-   return 0;
+	bzero(epc, sizeof(epc));
+
+	sleep(2);
+
+	readfromspi(&headerBuffer, 24, &readBuffer, 24);
+	//guardar lo recibido
+	printf("Header %s\n", &headerBuffer);
+
+	sleep(5);
+
+	//usleep(500000);
+
+	printf("\n");
+	return 0;
 }
 
-void selectDataDB(){
+void selectDataDB() {
 
 //	printf("SELECT DB\n");
 	int rc;
@@ -720,4 +766,30 @@ void selectDataDB(){
 	}
 
 	closespi();
+}
+
+void updateDB(char *epc) {
+
+	int rc;
+	char *zErrMsg = 0;
+	char *sql;
+	const char* data = "Callback function called";
+
+	sprintf(sql,
+			"UPDATE PRUEBAEPC set ENVIADO = 1 where EPC = %s\n; SELECT * from PRUEBAEPC;",
+			epc);
+	//   sql = "UPDATE PRUEBAEPC set ENVIADO = 1 where EPC = 1; " \
+	//           "SELECT * from PRUEBAEPC";
+
+	printf("SQL: %s\n", sql);
+
+	/* Execute SQL statement */
+	rc = sqlite3_exec(db, sql, callback, (void*) data, &zErrMsg);
+
+	if (rc != SQLITE_OK) {
+		fprintf(stderr, "SQL error: %s\n", zErrMsg);
+		sqlite3_free(zErrMsg);
+	} else {
+		fprintf(stdout, "Operation done successfully\n");
+	}
 }
