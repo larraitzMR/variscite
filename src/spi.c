@@ -153,3 +153,92 @@ int readfromspi( unsigned short	headerLength,
     return 0;
 } // end readfromspi()
 
+static const char *device = "/dev/spidev0.0";
+static char *input_file;
+static char *output_file;
+static uint16_t delay;
+static int verbose;
+static uint32_t speed = 115200;
+
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+
+static void pabort(const char *s) {
+	perror(s);
+	abort();
+}
+
+uint8_t default_tx[] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x40, 0x00, 0x00,
+		0x00, 0x00, 0x95, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xF0, 0x0D, };
+
+uint8_t default_rx[ARRAY_SIZE(default_tx)] = { 0, };
+char *input_tx;
+
+static void hex_dump(const void *src, size_t length, size_t line_size,
+		char *prefix) {
+	int i = 0;
+	const unsigned char *address = src;
+	const unsigned char *line = address;
+	unsigned char c;
+
+	printf("%s | ", prefix);
+	while (length-- > 0) {
+//		printf("%02X ", *address++);
+		if (!(++i % line_size) || (length == 0 && i % line_size)) {
+			while (line < address) {
+				c = *line++;
+				printf("%c", (c < 33 || c == 255) ? 0x2E : c);
+			}
+			printf("\n");
+			if (length > 0)
+				printf("%s | ", prefix);
+		}
+	}
+}
+
+void transfer(uint8_t const *tx, uint8_t const *rx, size_t len) {
+	int ret;
+	int out_fd;
+
+	printf("transfer\n");
+	struct spi_ioc_transfer tr = { .tx_buf = (unsigned long) tx, .rx_buf =
+			(unsigned long) rx, .len = len, .delay_usecs = delay, .speed_hz =
+			speed, .bits_per_word = bits, };
+
+	if (mode & SPI_TX_QUAD)
+		tr.tx_nbits = 4;
+	else if (mode & SPI_TX_DUAL)
+		tr.tx_nbits = 2;
+	if (mode & SPI_RX_QUAD)
+		tr.rx_nbits = 4;
+	else if (mode & SPI_RX_DUAL)
+		tr.rx_nbits = 2;
+	if (!(mode & SPI_LOOP)) {
+		if (mode & (SPI_TX_QUAD | SPI_TX_DUAL))
+			tr.rx_buf = 0;
+		else if (mode & (SPI_RX_QUAD | SPI_RX_DUAL))
+			tr.tx_buf = 0;
+	}
+
+	ret = ioctl(spi_descriptor, SPI_IOC_MESSAGE(1), &tr);
+	if (ret < 1)
+		pabort("can't send spi message");
+
+	if (verbose)
+		hex_dump(tx, len, 32, "TX");
+
+//	if (output_file) {
+//		out_fd = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+//		if (out_fd < 0)
+//			pabort("could not open output file");
+//
+//		ret = write(out_fd, rx, len);
+//		if (ret != len)
+//			pabort("not all bytes written to output file");
+//
+//		close(out_fd);
+//	}
+
+//	if (verbose || !output_file)
+//		hex_dump(rx, len, 32, "RX");
+}

@@ -34,6 +34,7 @@
 #include "sqlite3.h"
 #include "main.h"
 
+
 // =======================================================================
 //
 //  GLOBAL VARIABLES
@@ -44,6 +45,8 @@ uint8_t ant_count = 0;
 struct tablaEPC tabla[500];
 sqlite3 *db;
 int numeroEPCs;
+static int spi_descriptor;
+
 
 // log text
 static void initfunc(osjob_t* job) {
@@ -640,8 +643,9 @@ static uint32_t speed = 115200;
 #define UART_ARDUINO 	"/dev/ttymxc2"
 char *ReadyMsg = "READY";
 
-	char headerBuffer[24];
-	char readBuffer[24];
+
+
+
 //	char *headerBuffer = "";
 //	char *readBuffer = "";
 //	char *headerBuffer = (char*)malloc(10);
@@ -650,25 +654,28 @@ char *ReadyMsg = "READY";
 //	unsigned char *readBuffer[24];
 
 void *funcionDelHilo(void *parametro) {
-	int fd_uart;
 
-	fd_uart = uart_open(UART_ARDUINO, 115200, "8N1");
+	char headerBuffer[24];
+	char readBuffer[24];
 
 	while (1) {
-
-		bzero(&headerBuffer, sizeof(headerBuffer));
-		//printf("Funcion del hilo\n");
+		printf("Funcion del hilo\n");
+		openspi(device, speed);
 //		selectDataDB();
 		//leer spi
-		//openspi(device, speed);
-		uart_write_buffer(fd_uart, ReadyMsg, 5);
-		//writetospi(0, "HOLA HOLA", 24, "");
-		//readfromspi(*headerBuffer,24,*readBuffer,24);
-		uart_read(fd_uart, headerBuffer, 24);
+//		writetospi(24, "123456789098765432101111", 0, "");
+		transfer("123456789098765432101111",readBuffer, 24);
+//		printf("BRAIT\n");
+//		sleep(2);
+//		write(spi_descriptor, "HOLA", 5);
+//		read(spi_descriptor, headerBuffer, 24);
+//		readfromspi("",0,&readBuffer,5);
 //		//guardar lo recibido
-		printf("Header %s\n", headerBuffer);
-//		printf("Read %s\n", readBuffer);
-//		closespi();
+		//printf("Header %s\n", headerBuffer);
+		printf("Read %s\n", &readBuffer);
+		bzero(&readBuffer, sizeof(readBuffer));
+		sleep(1);
+		closespi();
 		//update enviado
 		//updateDB()
 		sleep(1);
@@ -677,7 +684,7 @@ void *funcionDelHilo(void *parametro) {
 //		fflush(readBuffer);
 
 //		bzero(&headerBuffer, sizeof(headerBuffer));
-//		bzero(&readBuffer, sizeof(readBuffer));
+
 	}
 }
 
@@ -730,9 +737,9 @@ static int callbackSelect(void *data, int argc, char **argv, char **azColName) {
 
 	sleep(2);
 
-	readfromspi(&headerBuffer, 24, &readBuffer, 24);
-	//guardar lo recibido
-	printf("Header %s\n", &headerBuffer);
+//	readfromspi(&headerBuffer, 24, &readBuffer, 24);
+//	//guardar lo recibido
+//	printf("Header %s\n", &headerBuffer);
 
 	sleep(5);
 
