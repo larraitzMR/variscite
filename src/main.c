@@ -34,7 +34,6 @@
 #include "sqlite3.h"
 #include "main.h"
 
-
 // =======================================================================
 //
 //  GLOBAL VARIABLES
@@ -46,7 +45,6 @@ struct tablaEPC tabla[500];
 sqlite3 *db;
 int numeroEPCs;
 static int spi_descriptor;
-
 
 // log text
 static void initfunc(osjob_t* job) {
@@ -643,9 +641,6 @@ static uint32_t speed = 115200;
 #define UART_ARDUINO 	"/dev/ttymxc2"
 char *ReadyMsg = "READY";
 
-
-
-
 //	char *headerBuffer = "";
 //	char *readBuffer = "";
 //	char *headerBuffer = (char*)malloc(10);
@@ -655,35 +650,25 @@ char *ReadyMsg = "READY";
 
 void *funcionDelHilo(void *parametro) {
 
-	char headerBuffer[24];
 	char readBuffer[24];
 
 	while (1) {
 		printf("Funcion del hilo\n");
-		openspi(device, speed);
-//		selectDataDB();
-		//leer spi
-//		writetospi(24, "123456789098765432101111", 0, "");
-		transfer("123456789098765432101111",readBuffer, 24);
-//		printf("BRAIT\n");
-//		sleep(2);
-//		write(spi_descriptor, "HOLA", 5);
-//		read(spi_descriptor, headerBuffer, 24);
-//		readfromspi("",0,&readBuffer,5);
-//		//guardar lo recibido
-		//printf("Header %s\n", headerBuffer);
-		printf("Read %s\n", &readBuffer);
-		bzero(&readBuffer, sizeof(readBuffer));
-		sleep(1);
-		closespi();
+//		openspi(device, speed);
+
+		selectDataDB();
+//
+//		transfer("123456789098765432101111", readBuffer, 24);
+//		printf("Read %s\n", readBuffer);
+//		bzero(readBuffer, sizeof(readBuffer));
+//		sleep(1);
+//		closespi();
+//		fflush(readBuffer);
+		sleep(10);
+
 		//update enviado
 		//updateDB()
-		sleep(1);
-
-//		fflush(headerBuffer);
-//		fflush(readBuffer);
-
-//		bzero(&headerBuffer, sizeof(headerBuffer));
+//		sleep(10);
 
 	}
 }
@@ -714,14 +699,13 @@ void insertintoDB() {
 }
 
 static int callbackSelect(void *data, int argc, char **argv, char **azColName) {
+
 	int i;
-	//fprintf(stderr, "%s: ", (const char*)data);
 	char epc[24];
 	char ID[4];
-	char *headerBuffer[24];
-	char *readBuffer[24];
+	char readBuffer[24];
 
-	//printf("Numero argumentos: %d\n", argc);
+	openspi(device, speed);
 
 	for (i = 0; i < argc; i++) {
 		//printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
@@ -729,21 +713,19 @@ static int callbackSelect(void *data, int argc, char **argv, char **azColName) {
 	//strcpy(ID,argv[0]);
 	strcpy(epc, argv[1]);
 	sprintf(epc, "%s", epc);
-    printf("%s\n", epc);
-//   writetospi(4,ID,24,epc);
-	writetospi(0, "", 24, epc);
+	printf("%s\n", epc);
 
+	transfer(epc, readBuffer, sizeof(epc));
 	bzero(epc, sizeof(epc));
 
-	sleep(2);
+	printf("Read %s\n", readBuffer);
+	bzero(readBuffer, sizeof(readBuffer));
 
-//	readfromspi(&headerBuffer, 24, &readBuffer, 24);
 //	//guardar lo recibido
-//	printf("Header %s\n", &headerBuffer);
 
-	sleep(5);
-
-	//usleep(500000);
+//  usleep(500000);
+	sleep(1);
+	closespi();
 
 	printf("\n");
 	return 0;
@@ -760,7 +742,7 @@ void selectDataDB() {
 	/* Create SQL statement */
 	sql = "SELECT * from PRUEBAEPC";
 
-	openspi(device, speed);
+	//openspi(device, speed);
 
 	/* Execute SQL statement */
 	rc = sqlite3_exec(db, sql, callbackSelect, (void*) data, &zErrMsg);
@@ -772,7 +754,7 @@ void selectDataDB() {
 		fprintf(stdout, "Operation done successfully\n");
 	}
 
-	closespi();
+	//closespi();
 }
 
 void updateDB(char *epc) {
