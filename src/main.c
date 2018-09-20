@@ -44,7 +44,6 @@ uint8_t ant_count = 0;
 struct tablaEPC tabla[500];
 sqlite3 *db;
 int numeroEPCs;
-static int spi_descriptor;
 
 // log text
 static void initfunc(osjob_t* job) {
@@ -598,7 +597,6 @@ int main(void) {
 				}
 				read_udp_message(socket_fd, msg, strlen(msg));
 			}
-//			selectDataDB();
 		}
 
 //		//Configuración gprs
@@ -635,43 +633,6 @@ void addTag(char epc[], uint8_t ant, int32_t rssi) {
 	//printf("NUMERO EPCS %d\n", numeroEPCs);
 }
 
-static const char *device = "/dev/spidev0.0";
-static uint32_t speed = 115200;
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-#define UART_ARDUINO 	"/dev/ttymxc2"
-char *ReadyMsg = "READY";
-
-//	char *headerBuffer = "";
-//	char *readBuffer = "";
-//	char *headerBuffer = (char*)malloc(10);
-//	char *readBuffer = (char*)malloc(10);
-//	unsigned char *headerBuffer[24];
-//	unsigned char *readBuffer[24];
-
-void *funcionDelHilo(void *parametro) {
-
-	char readBuffer[24];
-
-	while (1) {
-		printf("Funcion del hilo\n");
-//		openspi(device, speed);
-
-		selectDataDB();
-//
-//		transfer("123456789098765432101111", readBuffer, 24);
-//		printf("Read %s\n", readBuffer);
-//		bzero(readBuffer, sizeof(readBuffer));
-//		sleep(1);
-//		closespi();
-//		fflush(readBuffer);
-		sleep(10);
-
-		//update enviado
-		//updateDB()
-//		sleep(10);
-
-	}
-}
 
 void insertintoDB() {
 
@@ -698,52 +659,72 @@ void insertintoDB() {
 	}
 }
 
+static const char *device = "/dev/spidev0.0";
+static uint32_t speed = 115200;
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+char *ReadyMsg = "READY";
+struct recibidoEPC rec[50];
+int j;
+
+void *funcionDelHilo(void *parametro) {
+
+	char arrayEPC[24];
+
+	while (1) {
+		printf("Funcion del hilo\n");
+
+		selectDataDB();
+
+		for (int i = 0; i < j; i++) {
+//			printf("arrayEPC %s\n", rec[i].EPC);
+//			printf("i %d, j %d\n", i, j);
+			strncpy(arrayEPC, rec[i].EPC, 24);
+			//printf("arrayEPC %s\n", arrayEPC);
+			updateDB(arrayEPC);
+			sleep(1);
+		}
+
+		sleep(30);
+	}
+}
+
 static int callbackSelect(void *data, int argc, char **argv, char **azColName) {
 
-	int i;
 	char epc[24];
-	char ID[4];
 	char readBuffer[24];
 
 	openspi(device, speed);
 
-	for (i = 0; i < argc; i++) {
-		//printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-	}
-	//strcpy(ID,argv[0]);
 	strcpy(epc, argv[1]);
 	sprintf(epc, "%s", epc);
-	printf("%s\n", epc);
-
 	transfer(epc, readBuffer, sizeof(epc));
 	bzero(epc, sizeof(epc));
+	printf("READ %s\n", readBuffer);
 
-	printf("Read %s\n", readBuffer);
+	strcpy(rec[j].EPC, readBuffer);
+	j++;
+	if (j == 50) {
+		j = 0;
+	}
+
 	bzero(readBuffer, sizeof(readBuffer));
-
-//	//guardar lo recibido
-
-//  usleep(500000);
 	sleep(1);
 	closespi();
 
-	printf("\n");
 	return 0;
 }
 
 void selectDataDB() {
 
-//	printf("SELECT DB\n");
 	int rc;
 	char *zErrMsg = 0;
 	char *sql;
 	const char* data = "Callback function called";
 
 	/* Create SQL statement */
-	sql = "SELECT * from PRUEBAEPC";
+	sql = "SELECT * FROM PRUEBAEPC WHERE ENVIADO = 0 GROUP BY EPC;";
 
-	//openspi(device, speed);
-
+	j = 0;
 	/* Execute SQL statement */
 	rc = sqlite3_exec(db, sql, callbackSelect, (void*) data, &zErrMsg);
 
@@ -753,24 +734,20 @@ void selectDataDB() {
 	} else {
 		fprintf(stdout, "Operation done successfully\n");
 	}
-
-	//closespi();
 }
 
-void updateDB(char *epc) {
+
+void updateDB(char epc[24]) {
+//	printf("UPDATE DB\n");
 
 	int rc;
 	char *zErrMsg = 0;
-	char *sql;
+	char *sql[100];
 	const char* data = "Callback function called";
 
-	sprintf(sql,
-			"UPDATE PRUEBAEPC set ENVIADO = 1 where EPC = %s\n; SELECT * from PRUEBAEPC;",
-			epc);
-	//   sql = "UPDATE PRUEBAEPC set ENVIADO = 1 where EPC = 1; " \
-	//           "SELECT * from PRUEBAEPC";
-
-	printf("SQL: %s\n", sql);
+//	sprintf(sql, "UPDATE PRUEBAEPC SET ENVIADO = 1 WHERE EPC = \"%s\"; SELECT * FROM PRUEBAEPC GROUP BY EPC;", epc);
+	sprintf(sql, "UPDATE PRUEBAEPC SET ENVIADO = 1 WHERE EPC =\"%s\";", epc);
+	printf("%s\n", sql);
 
 	/* Execute SQL statement */
 	rc = sqlite3_exec(db, sql, callback, (void*) data, &zErrMsg);
