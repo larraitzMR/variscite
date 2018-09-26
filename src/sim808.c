@@ -894,7 +894,7 @@ void append(char *s, char c) {
 }
 
 /* GPS_AT_SEND_DATA: Send data to mobile */
-void gps_at_send_data(void) {
+void gps_at_send_data(char *epc) {
 
 	char gprs_msg[255];
 	bzero(&gprs_msg, sizeof(gprs_msg));
@@ -920,7 +920,11 @@ void gps_at_send_data(void) {
 
 	sleep(2);
 
-	at_cmd = "Esta es otra prueba\x1a";
+	at_cmd = epc;
+	printf("%s\n", at_cmd);
+	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+
+	at_cmd = "\x1a";
 	printf("%s\n", at_cmd);
 	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
 
@@ -1164,4 +1168,3 @@ return;
  //idx_output = (idx_output+1) % GPRS_FRAME_BUFFER_SIZE;
 
 } // GPRS SEND FRAME IN BUFFER END
-
