@@ -727,17 +727,15 @@ void *funcionDelHilo(void *parametro) {
 
 		selectDataDB();
 		enviarEPCporSPI();
+		sleep(1);
 
-		for (int i = 0; i < numGuardado; i++) {
-			printf("FOR %d %d\n", i, numGuardado);
-			printf("arrayEPC %s\n", rec[i].EPC);
-			strcpy(arrayEPC, rec[i].EPC);
-//			printf("COPY\n");
+		for (int i = 1; i < numGuardado; i++) {
+			strncpy(arrayEPC, rec[i].EPC,24);
 			printf("arrayEPC %s\n", arrayEPC);
 			updateDB(arrayEPC);
 			sleep(1);
 		}
-		sleep(30);
+		sleep(20);
 	}
 }
 
@@ -747,24 +745,31 @@ void enviarEPCporSPI() {
 	char readBuffer[24];
 
 	printf("NUM TOTAL DATOS %d\n", numTumplas);
+	openspi(device, speed);
+
+//	strncpy(epc, datSelect[0].EPC, 24);
+//	transfer(epc, readBuffer, sizeof(epc));
+//	strncpy(rec[numGuardado].EPC, readBuffer,24);
+//	printf("Guardado %s\n", rec[numGuardado].EPC);
 
 	for (int d = 0; d < numTumplas; d++) {
+		printf("NUM D %d\n", d);
 
-		openspi(device, speed);
-//		printf("FOR SPI %d %d\n", d, pBD);
-
-		//printf("struct %s\n", datSelect[d].EPC);
 		strncpy(epc, datSelect[d].EPC, 24);
-		printf("EPC %s\n", epc);
-		sleep(1);
-		transfer(epc, 0, sizeof(epc));
-		sleep(1);
-//		transfer("123456789012345678901234", readBuffer, sizeof(epc));
-		readfromspi(0, 0, 24, readBuffer);
-		//gps_at_send_data(epc);
-		printf("READ %s\n", readBuffer);
 
-		strcpy(rec[numGuardado].EPC, readBuffer);
+//		transfer(epc, readBuffer, sizeof(epc));
+//		printf("Buffer %s\n", readBuffer);
+//		bzero(readBuffer, sizeof(readBuffer));
+//		sleep(1);
+
+		transfer(epc, readBuffer, sizeof(epc));
+		strncpy(rec[numGuardado].EPC, readBuffer,24);
+		printf("Guardado %s\n", rec[numGuardado].EPC);
+
+//		readfromspi(0, 0, 24, readBuffer);
+//		strncpy(rec[numGuardado].EPC, readBuffer,24);
+//		printf("Guardado %s\n", rec[numGuardado].EPC);
+
 		numGuardado++;
 		if (numGuardado == 50) {
 			numGuardado = 0;
@@ -773,10 +778,19 @@ void enviarEPCporSPI() {
 		bzero(readBuffer, sizeof(readBuffer));
 		bzero(epc, sizeof(epc));
 		sleep(1);
-
-		closespi();
-		printf("CLOSE SPI\n");
 	}
+//	transfer(epc, readBuffer, sizeof(epc));
+	readfromspi(0, 0, 24, readBuffer);
+	strncpy(rec[numGuardado].EPC, readBuffer,24);
+	printf("Guardado %s\n", rec[numGuardado].EPC);
+	bzero(readBuffer, sizeof(readBuffer));
+	numGuardado++;
+	if (numGuardado == 50) {
+		numGuardado = 0;
+	}
+
+	closespi();
+
 }
 
 static int callbackSelect(void *data, int argc, char **argv, char **azColName) {
@@ -815,6 +829,7 @@ void selectDataDB() {
 	} else {
 		fprintf(stdout, "Operation done successfully\n");
 	}
+	fflush(stdout);
 }
 
 void updateDB(char epc[24]) {
@@ -826,7 +841,7 @@ void updateDB(char epc[24]) {
 	const char* data = "Callback function called";
 
 //	sprintf(sql, "UPDATE PRUEBAEPC SET ENVIADO = 1 WHERE EPC = \"%s\"; SELECT * FROM PRUEBAEPC GROUP BY EPC;", epc);
-	sprintf(sql, "UPDATE PRUEBAEPC SET ENVIADO = 1 WHERE EPC =\"%s\";", epc);
+	sprintf(sql, "UPDATE PRUEBAEPC SET ENVIADO = 1 WHERE EPC = \"%s\";", epc);
 	printf("%s\n", sql);
 
 	/* Execute SQL statement */
