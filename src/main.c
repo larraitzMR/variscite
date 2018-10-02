@@ -41,7 +41,7 @@
 // =======================================================================
 uint8_t ant_buffer[] = { };
 uint8_t ant_count = 0;
-struct tablaEPC tabla[500];
+struct tablaEPC tabla[300];
 sqlite3 *db;
 int numeroEPCs;
 
@@ -253,12 +253,12 @@ int main(void) {
 		exit(1);
 	}
 
-	enviar_udp_msg(socket_fd, Ready, COMMUNICATIONS_PORT);
-	while (strncmp(msg, "CONECTADO", 9) != 0) {
-		read_udp_message(socket_fd, msg, strlen(msg));
-		printf("msg: %s\n", msg);
-		enviar_udp_msg(socket_fd, Ready, COMMUNICATIONS_PORT);
-	}
+//	enviar_udp_msg(socket_fd, Ready, COMMUNICATIONS_PORT);
+//	while (strncmp(msg, "CONECTADO", 9) != 0) {
+//		read_udp_message(socket_fd, msg, strlen(msg));
+//		printf("msg: %s\n", msg);
+//		enviar_udp_msg(socket_fd, Ready, COMMUNICATIONS_PORT);
+//	}
 
 	pthread_t thread_id;
 	pthread_create(&thread_id, NULL, funcionDelHilo, NULL);
@@ -633,7 +633,6 @@ void addTag(char epc[], uint8_t ant, int32_t rssi) {
 	//printf("NUMERO EPCS %d\n", numeroEPCs);
 }
 
-
 void insertintoDB() {
 
 //	printf("INSERT DB\n");
@@ -663,8 +662,61 @@ static const char *device = "/dev/spidev0.0";
 static uint32_t speed = 115200;
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 char *ReadyMsg = "READY";
+struct datosBD datSelect[50];
 struct recibidoEPC rec[50];
+int numGuardado;
+int numTumplas;
+
 int j;
+
+//void *funcionDelHilo(void *parametro) {
+//
+//	char arrayEPC[24];
+//
+//	while (1) {
+//		printf("Funcion del hilo\n");
+//
+//		selectDataDB();
+//
+//		for (int i = 0; i < j; i++) {
+////			printf("arrayEPC %s\n", rec[i].EPC);
+////			printf("i %d, j %d\n", i, j);
+//			strncpy(arrayEPC, rec[i].EPC, 24);
+//			//printf("arrayEPC %s\n", arrayEPC);
+//			updateDB(arrayEPC);
+//			sleep(1);
+//		}
+//
+//		sleep(30);
+//	}
+//}
+//
+//static int callbackSelect(void *data, int argc, char **argv, char **azColName) {
+//
+//	char epc[24];
+//	char readBuffer[24];
+//
+//	openspi(device, speed);
+//
+//	strcpy(epc, argv[1]);
+//	sprintf(epc, "%s", epc);
+//	transfer(epc, readBuffer, sizeof(epc));
+//
+//	bzero(epc, sizeof(epc));
+//	printf("READ %s\n", readBuffer);
+//
+//	strcpy(rec[j].EPC, readBuffer);
+//	j++;
+//	if (j == 50) {
+//		j = 0;
+//	}
+//
+//	bzero(readBuffer, sizeof(readBuffer));
+//	sleep(1);
+//	closespi();
+//
+//	return 0;
+//}
 
 void *funcionDelHilo(void *parametro) {
 
@@ -674,17 +726,56 @@ void *funcionDelHilo(void *parametro) {
 		printf("Funcion del hilo\n");
 
 		selectDataDB();
+		enviarEPCporSPI();
 
-		for (int i = 0; i < j; i++) {
-//			printf("arrayEPC %s\n", rec[i].EPC);
-//			printf("i %d, j %d\n", i, j);
-			strncpy(arrayEPC, rec[i].EPC, 24);
-			//printf("arrayEPC %s\n", arrayEPC);
+		for (int i = 0; i < numGuardado; i++) {
+			printf("FOR %d %d\n", i, numGuardado);
+			printf("arrayEPC %s\n", rec[i].EPC);
+			strcpy(arrayEPC, rec[i].EPC);
+//			printf("COPY\n");
+			printf("arrayEPC %s\n", arrayEPC);
 			updateDB(arrayEPC);
 			sleep(1);
 		}
-
 		sleep(30);
+	}
+}
+
+void enviarEPCporSPI() {
+
+	char epc[24];
+	char readBuffer[24];
+
+	printf("NUM TOTAL DATOS %d\n", numTumplas);
+
+	for (int d = 0; d < numTumplas; d++) {
+
+		openspi(device, speed);
+//		printf("FOR SPI %d %d\n", d, pBD);
+
+		//printf("struct %s\n", datSelect[d].EPC);
+		strncpy(epc, datSelect[d].EPC, 24);
+		printf("EPC %s\n", epc);
+		sleep(1);
+		transfer(epc, 0, sizeof(epc));
+		sleep(1);
+//		transfer("123456789012345678901234", readBuffer, sizeof(epc));
+		readfromspi(0, 0, 24, readBuffer);
+		//gps_at_send_data(epc);
+		printf("READ %s\n", readBuffer);
+
+		strcpy(rec[numGuardado].EPC, readBuffer);
+		numGuardado++;
+		if (numGuardado == 50) {
+			numGuardado = 0;
+		}
+
+		bzero(readBuffer, sizeof(readBuffer));
+		bzero(epc, sizeof(epc));
+		sleep(1);
+
+		closespi();
+		printf("CLOSE SPI\n");
 	}
 }
 
@@ -693,23 +784,11 @@ static int callbackSelect(void *data, int argc, char **argv, char **azColName) {
 	char epc[24];
 	char readBuffer[24];
 
-	openspi(device, speed);
-
 	strcpy(epc, argv[1]);
 	sprintf(epc, "%s", epc);
-	transfer(epc, readBuffer, sizeof(epc));
-	bzero(epc, sizeof(epc));
-	printf("READ %s\n", readBuffer);
-
-	strcpy(rec[j].EPC, readBuffer);
-	j++;
-	if (j == 50) {
-		j = 0;
-	}
-
-	bzero(readBuffer, sizeof(readBuffer));
-	sleep(1);
-	closespi();
+	strcpy(datSelect[numTumplas].EPC, epc);
+	printf("Datos select %s\n", datSelect[numTumplas].EPC);
+	numTumplas++;
 
 	return 0;
 }
@@ -724,7 +803,9 @@ void selectDataDB() {
 	/* Create SQL statement */
 	sql = "SELECT * FROM PRUEBAEPC WHERE ENVIADO = 0 GROUP BY EPC;";
 
-	j = 0;
+	numGuardado = 0;
+	numTumplas = 0;
+	j=0;
 	/* Execute SQL statement */
 	rc = sqlite3_exec(db, sql, callbackSelect, (void*) data, &zErrMsg);
 
@@ -735,7 +816,6 @@ void selectDataDB() {
 		fprintf(stdout, "Operation done successfully\n");
 	}
 }
-
 
 void updateDB(char epc[24]) {
 //	printf("UPDATE DB\n");
