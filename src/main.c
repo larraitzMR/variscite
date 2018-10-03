@@ -665,110 +665,57 @@ char *ReadyMsg = "READY";
 struct datosBD datSelect[50];
 struct recibidoEPC rec[50];
 int numGuardado;
-int numTumplas;
+int numTuplas;
+char * listaEPC;
 
-int j;
-
-//void *funcionDelHilo(void *parametro) {
-//
-//	char arrayEPC[24];
-//
-//	while (1) {
-//		printf("Funcion del hilo\n");
-//
-//		selectDataDB();
-//
-//		for (int i = 0; i < j; i++) {
-////			printf("arrayEPC %s\n", rec[i].EPC);
-////			printf("i %d, j %d\n", i, j);
-//			strncpy(arrayEPC, rec[i].EPC, 24);
-//			//printf("arrayEPC %s\n", arrayEPC);
-//			updateDB(arrayEPC);
-//			sleep(1);
-//		}
-//
-//		sleep(30);
-//	}
-//}
-//
-//static int callbackSelect(void *data, int argc, char **argv, char **azColName) {
-//
-//	char epc[24];
-//	char readBuffer[24];
-//
-//	openspi(device, speed);
-//
-//	strcpy(epc, argv[1]);
-//	sprintf(epc, "%s", epc);
-//	transfer(epc, readBuffer, sizeof(epc));
-//
-//	bzero(epc, sizeof(epc));
-//	printf("READ %s\n", readBuffer);
-//
-//	strcpy(rec[j].EPC, readBuffer);
-//	j++;
-//	if (j == 50) {
-//		j = 0;
-//	}
-//
-//	bzero(readBuffer, sizeof(readBuffer));
-//	sleep(1);
-//	closespi();
-//
-//	return 0;
-//}
 
 void *funcionDelHilo(void *parametro) {
 
 	char arrayEPC[24];
+	int jj = 0;
 
 	while (1) {
 		printf("Funcion del hilo\n");
 
 		selectDataDB();
-		enviarEPCporSPI();
-		sleep(1);
 
-		for (int i = 1; i < numGuardado; i++) {
-			strncpy(arrayEPC, rec[i].EPC,24);
-			printf("arrayEPC %s\n", arrayEPC);
-			updateDB(arrayEPC);
-			sleep(1);
-		}
+		while(jj < numTuplas){
+				printf("EPC: %s i %d\n", listaEPC[jj],jj);
+				jj++;
+		//		fflush();
+			}
+
+		enviarEPCporSMS();
+
+		//Para enviar por LORA
+//		enviarEPCporSPI();
+//		sleep(1);
+//		for (int i = 1; i < numGuardado; i++) {
+//			strncpy(arrayEPC, rec[i].EPC,24);
+//			printf("arrayEPC %s\n", arrayEPC);
+////			updateDB(arrayEPC);
+//			sleep(1);
+//		}
 		sleep(20);
 	}
 }
 
 void enviarEPCporSPI() {
 
+//	char *epc;
 	char epc[24];
 	char readBuffer[24];
 
-	printf("NUM TOTAL DATOS %d\n", numTumplas);
+	printf("NUM TOTAL DATOS %d\n", numTuplas);
 	openspi(device, speed);
 
-//	strncpy(epc, datSelect[0].EPC, 24);
-//	transfer(epc, readBuffer, sizeof(epc));
-//	strncpy(rec[numGuardado].EPC, readBuffer,24);
-//	printf("Guardado %s\n", rec[numGuardado].EPC);
-
-	for (int d = 0; d < numTumplas; d++) {
+	for (int d = 0; d < numTuplas; d++) {
 		printf("NUM D %d\n", d);
 
 		strncpy(epc, datSelect[d].EPC, 24);
-
-//		transfer(epc, readBuffer, sizeof(epc));
-//		printf("Buffer %s\n", readBuffer);
-//		bzero(readBuffer, sizeof(readBuffer));
-//		sleep(1);
-
 		transfer(epc, readBuffer, sizeof(epc));
 		strncpy(rec[numGuardado].EPC, readBuffer,24);
 		printf("Guardado %s\n", rec[numGuardado].EPC);
-
-//		readfromspi(0, 0, 24, readBuffer);
-//		strncpy(rec[numGuardado].EPC, readBuffer,24);
-//		printf("Guardado %s\n", rec[numGuardado].EPC);
 
 		numGuardado++;
 		if (numGuardado == 50) {
@@ -779,7 +726,7 @@ void enviarEPCporSPI() {
 		bzero(epc, sizeof(epc));
 		sleep(1);
 	}
-//	transfer(epc, readBuffer, sizeof(epc));
+
 	readfromspi(0, 0, 24, readBuffer);
 	strncpy(rec[numGuardado].EPC, readBuffer,24);
 	printf("Guardado %s\n", rec[numGuardado].EPC);
@@ -793,16 +740,27 @@ void enviarEPCporSPI() {
 
 }
 
+void enviarEPCporSMS(){
+	gps_at_send_data(&listaEPC, numTuplas);
+
+}
+
 static int callbackSelect(void *data, int argc, char **argv, char **azColName) {
 
 	char epc[24];
 	char readBuffer[24];
 
-	strcpy(epc, argv[1]);
-	sprintf(epc, "%s", epc);
-	strcpy(datSelect[numTumplas].EPC, epc);
-	printf("Datos select %s\n", datSelect[numTumplas].EPC);
-	numTumplas++;
+//	strcpy(epc, argv[1]);
+//	sprintf(epc, "%s", epc);
+	printf("ARGV %s\n", argv[1]);
+//	strcpy(datSelect[numTuplas].EPC, argv[1]);
+//	strcpy(listaEPC[numTuplas], argv[1]);
+	listaEPC[numTuplas] = argv[1];
+	printf("Lista %s\n", listaEPC[numTuplas]);
+//	printf("Datos select %s\n", datSelect[numTuplas].EPC);
+	numTuplas++;
+	listaEPC = malloc(numTuplas * sizeof(char));
+
 
 	return 0;
 }
@@ -818,8 +776,7 @@ void selectDataDB() {
 	sql = "SELECT * FROM PRUEBAEPC WHERE ENVIADO = 0 GROUP BY EPC;";
 
 	numGuardado = 0;
-	numTumplas = 0;
-	j=0;
+	numTuplas = 0;
 	/* Execute SQL statement */
 	rc = sqlite3_exec(db, sql, callbackSelect, (void*) data, &zErrMsg);
 
