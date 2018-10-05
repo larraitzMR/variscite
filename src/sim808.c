@@ -63,11 +63,8 @@ int gprs_is_ip_v4(char* ip);
 unsigned char gprs_checksum(unsigned char *data, short len);
 void gprs_send_frame_in_buffer(void);
 
-#define CTRL(x) (#x[0]-'a'+1)
-
 int recibidoOK = 0;
 int recibidoEscribe = 0;
-
 
 // =======================================================================
 //
@@ -930,24 +927,74 @@ void gps_at_send_data(char *epc) {
 
 } // GPS AT GET DATA
 
+/* GPS_AT_SEND_DATA: Send data to mobile */
+//void gps_at_send_data(char *epc, struct datosBD *dBD) {
+//void gps_at_send_data(char *epc[], int numTuplas) {
+//
+//	char gprs_msg[255];
+//	bzero(&gprs_msg, sizeof(gprs_msg));
+//	int i = 0;
+//
+//	char *at_cmd = "AT+CMGF=1\r";
+//	printf("%s\n", at_cmd);
+//	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+//
+//	sleep(1);
+//
+//	gprs_process_msg();
+//
+//	while (!recibidoOK) {
+//		printf("ESPERANDO OK");
+//	}
+//
+//	sleep(1);
+//
+//	printf("ESPERANDO");
+//	at_cmd = "AT+CMGS=\"+34649103025\"\r";
+//	printf("%s\n", at_cmd);
+//	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+//
+//	gprs_process_msg();
+//
+//	sleep(2);
+//
+//	while (i < numTuplas) {
+//		printf("%s i %d\n", epc[i], i);
+//		strcpy(at_cmd, epc[i]);
+////		at_cmd = epc;
+//		printf("%s\n", at_cmd);
+//		result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+//		i++;
+//	}
+//
+//	at_cmd = "\x1a";
+//	printf("%s\n", at_cmd);
+//	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+//
+//	at_cmd = epc;
+//	printf("%s\n", at_cmd);
+//	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+//
+//} // GPS AT GET DATA
+
 /* GPS_GET_LATITUDE: Returns gps latitude, previously obtained from gps */
 t_position gps_get_latitude(void) {
-return latitude;
+	return latitude;
 } // GPS GET LATITUDE END
 
 /* GPS_GET_LONGITUDE: Returns gps longitude, previously obtained from gps */
 t_position gps_get_longitude(void) {
-return longitude;
+	return longitude;
 } // GPS GET LONGITUDE END
 
 /* GPS_GET_STATUS: Return curreng gps status */
 unsigned short gps_get_status(void) {
-return gps_status;
+	return gps_status;
 } // GPS GET STATUS END
 
 /* GPRS_GET_CONFIG: Return 1 if gprs is in config mode, 0 otherwise. */
 int gprs_get_config(void) {
-return gprs_configure;
+	return gprs_configure;
 } // GPRS GET CONFIG END
 
 /* GPRS_SET_CONFIG: Put GPRS in config mode.
@@ -959,212 +1006,214 @@ return gprs_configure;
 
 /* GPRS_CHECK_ERROR: Return one if critical error. In that case recommendation is to use any other network interface */
 int gprs_check_error(void) {
-if (gprs_status == GPRS_ERROR) {
-return 1;
-} else {
-return 0;
-}
+	if (gprs_status == GPRS_ERROR) {
+		return 1;
+	} else {
+		return 0;
+	}
 } // GPRS CHECK ERROR END
 
 /* GPRS_SEND_POSITION: Send message to server with position */
 int gprs_send_position(t_position lat, t_position lon) {
- //Check if frame buffer is full
-if (gprs_buffer_full) {
+	//Check if frame buffer is full
+	if (gprs_buffer_full) {
 #ifdef GPRS_DEBUG
-printf("gprs_send error: Buffer full\n");
-fflush(stdout);
+		printf("gprs_send error: Buffer full\n");
+		fflush(stdout);
 #endif
-gprs_status = GPRS_ERROR;
-gprs_configure = 0;
-idx_input = idx_output;
-return (-1);
-}
+		gprs_status = GPRS_ERROR;
+		gprs_configure = 0;
+		idx_input = idx_output;
+		return (-1);
+	}
 
- //Check status
-if (gprs_status < GPRS_IP_OK) {
+	//Check status
+	if (gprs_status < GPRS_IP_OK) {
 #ifdef GPRS_DEBUG
-printf("gprs_send error: gprs connection missconfigured\n");
-fflush(stdout);
+		printf("gprs_send error: gprs connection missconfigured\n");
+		fflush(stdout);
 #endif
-gprs_status = GPRS_ERROR;
-gprs_configure = 0;
-idx_input = idx_output;
-return (-1);
-}
+		gprs_status = GPRS_ERROR;
+		gprs_configure = 0;
+		idx_input = idx_output;
+		return (-1);
+	}
 
- //Prepare frame
-bzero(&frame_buffer[idx_input].data, GPRS_MAX_FRAME_SIZE);
+	//Prepare frame
+	bzero(&frame_buffer[idx_input].data, GPRS_MAX_FRAME_SIZE);
 
- //Make message
-frame_buffer[idx_input].data[0] = '#';
+	//Make message
+	frame_buffer[idx_input].data[0] = '#';
 
- //Latitude
-frame_buffer[idx_input].data[1] = lat.byte[0];
-frame_buffer[idx_input].data[2] = lat.byte[1];
-frame_buffer[idx_input].data[3] = lat.byte[2];
-frame_buffer[idx_input].data[4] = lat.byte[3];
+	//Latitude
+	frame_buffer[idx_input].data[1] = lat.byte[0];
+	frame_buffer[idx_input].data[2] = lat.byte[1];
+	frame_buffer[idx_input].data[3] = lat.byte[2];
+	frame_buffer[idx_input].data[4] = lat.byte[3];
 
- //Longitude
-frame_buffer[idx_input].data[5] = lon.byte[0];
-frame_buffer[idx_input].data[6] = lon.byte[1];
-frame_buffer[idx_input].data[7] = lon.byte[2];
-frame_buffer[idx_input].data[8] = lon.byte[3];
+	//Longitude
+	frame_buffer[idx_input].data[5] = lon.byte[0];
+	frame_buffer[idx_input].data[6] = lon.byte[1];
+	frame_buffer[idx_input].data[7] = lon.byte[2];
+	frame_buffer[idx_input].data[8] = lon.byte[3];
 
- //Checksum
-frame_buffer[idx_input].data[9] = gprs_checksum(
-	(unsigned char *) frame_buffer[idx_input].data, 9);
+	//Checksum
+	frame_buffer[idx_input].data[9] = gprs_checksum(
+			(unsigned char *) frame_buffer[idx_input].data, 9);
 
- //Message len
-frame_buffer[idx_input].len = 9 + 1;
+	//Message len
+	frame_buffer[idx_input].len = 9 + 1;
 
- //Update idx_input
-idx_input = (idx_input + 1) % GPRS_FRAME_BUFFER_SIZE;
-if (idx_input == idx_output)
-gprs_buffer_full = 1;
+	//Update idx_input
+	idx_input = (idx_input + 1) % GPRS_FRAME_BUFFER_SIZE;
+	if (idx_input == idx_output)
+		gprs_buffer_full = 1;
 
- //State machine
-switch (gprs_status) {
-case GPRS_IP_OK:
+	//State machine
+	switch (gprs_status) {
+	case GPRS_IP_OK:
 //Try tcp connection
-gprs_at_open_tcp_con(GPRS_SERVER_IP, GPRS_SERVER_PORT);
-gprs_status = GPRS_TCP_CONNECTING;
-gprs_send_mal = 0;
-break;
-case GPRS_TCP_CONNECTING:
-case GPRS_TCP_READY:
+		gprs_at_open_tcp_con(GPRS_SERVER_IP, GPRS_SERVER_PORT);
+		gprs_status = GPRS_TCP_CONNECTING;
+		gprs_send_mal = 0;
+		break;
+	case GPRS_TCP_CONNECTING:
+	case GPRS_TCP_READY:
 //Do nothing. Messages will be sent when we receive answer to connect or previous send commands
-break;
-default:
+		break;
+	default:
 //Error. Something was wrong.
 #ifdef GPRS_DEBUG
-printf("gprs_send error: unexpected status in state machine -> %d\n",
-		gprs_status);
-fflush(stdout);
+		printf("gprs_send error: unexpected status in state machine -> %d\n",
+				gprs_status);
+		fflush(stdout);
 #endif
-gprs_status = GPRS_ERROR;
-gprs_configure = 0;
-idx_input = idx_output;
-return (-1);
-break;
-}
+		gprs_status = GPRS_ERROR;
+		gprs_configure = 0;
+		idx_input = idx_output;
+		return (-1);
+		break;
+	}
 
-return 0;
+	return 0;
 
 } //GPRS_SEND_POSITION END
 
 /* GPRS_CHECKSUM: Calculate checksum to be added at the end of a frame. Add bytes and apply 2-complement. */
 unsigned char gprs_checksum(unsigned char *data, short len) {
-char result = 0;
-short i = 0;
+	char result = 0;
+	short i = 0;
 
-for (i = 0; i < len; i++) {
-result += data[i];
-}
+	for (i = 0; i < len; i++) {
+		result += data[i];
+	}
 
- //Two - complement
-result = ~result;
-result++;
+	//Two - complement
+	result = ~result;
+	result++;
 
-return result;
+	return result;
 } // GPRS CHECKSUM END
 
 /* IS_IP_V4: Returns 1 if input string is a well formated ip. Otherwise returns 0 */
 int gprs_is_ip_v4(char* ip) {
-int num;
-int flag = 1;
+	int num;
+	int flag = 1;
 
- //Check length
-if ((strlen(ip) > 15) || (strlen(ip) < 7)) {
-return 0;
-}
+	//Check length
+	if ((strlen(ip) > 15) || (strlen(ip) < 7)) {
+		return 0;
+	}
 
-int counter = 0;
-char* p = strtok(ip, ".");
+	int counter = 0;
+	char* p = strtok(ip, ".");
 
-while (p && flag) {
-num = atoi(p);
+	while (p && flag) {
+		num = atoi(p);
 
-if ((num >= 0) && (num <= 255) && (counter++ < 4)) {
-	flag = 1;
-	p = strtok(NULL, ".");
-} else {
-	flag = 0;
-	break;
-}
-}
+		if ((num >= 0) && (num <= 255) && (counter++ < 4)) {
+			flag = 1;
+			p = strtok(NULL, ".");
+		} else {
+			flag = 0;
+			break;
+		}
+	}
 
-return flag && (counter == 4);
+	return flag && (counter == 4);
 } // IS IP V4 END
 
 /* GPRS_SEND_FRAME_IN_BUFFER: If there are messages in the gprs buffer to be sent, take the first one in the queue, and send it. */
 void gprs_send_frame_in_buffer(void) {
-char at_cmd[255];
+	char at_cmd[255];
 
-if ((gprs_status != GPRS_TCP_READY) || (idx_input == idx_output)) {
-printf("Send frame in buffer error: Wrong gprs status %d\n", gprs_status);
-fflush(stdout);
-gprs_status = GPRS_ERROR;
-gprs_configure = 0;
-idx_input = idx_output;
-return;
-}
+	if ((gprs_status != GPRS_TCP_READY) || (idx_input == idx_output)) {
+		printf("Send frame in buffer error: Wrong gprs status %d\n",
+				gprs_status);
+		fflush(stdout);
+		gprs_status = GPRS_ERROR;
+		gprs_configure = 0;
+		idx_input = idx_output;
+		return;
+	}
 
 #if defined(SUPPORT_SLEEP)
-uart_write_buffer(fd_gprs, "a\r", 2);
-usleep(T_100MS);
+	uart_write_buffer(fd_gprs, "a\r", 2);
+	usleep(T_100MS);
 #endif
 
-bzero(&at_cmd, 255);
-sprintf(at_cmd, "AT+CIPSEND=%d\r", frame_buffer[idx_output].len);
+	bzero(&at_cmd, 255);
+	sprintf(at_cmd, "AT+CIPSEND=%d\r", frame_buffer[idx_output].len);
 
-int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
 
-if (result < 0) {
+	if (result < 0) {
 #ifdef GPRS_DEBUG
-printf("GPRS: Error enviando comando AT+CIPSEND\n");
-fflush(stdout);
+		printf("GPRS: Error enviando comando AT+CIPSEND\n");
+		fflush(stdout);
 #endif
 //Error in gprs
-if (gprs_critical_errors <= GPRS_CRITICAL_ERROR_LIMIT)
-	gprs_critical_errors++;
-if (gprs_critical_errors <= GPRS_CRITICAL_ERROR_LIMIT) {
-	gprs_status = GPRS_ERROR;
-	gprs_configure = 0;
-	idx_input = idx_output;
-}
-return;
-}
- //Wait for prompt
-usleep(T_100MS);
+		if (gprs_critical_errors <= GPRS_CRITICAL_ERROR_LIMIT)
+			gprs_critical_errors++;
+		if (gprs_critical_errors <= GPRS_CRITICAL_ERROR_LIMIT) {
+			gprs_status = GPRS_ERROR;
+			gprs_configure = 0;
+			idx_input = idx_output;
+		}
+		return;
+	}
+	//Wait for prompt
+	usleep(T_100MS);
 
- //Send first message in buffer
+	//Send first message in buffer
 
-result = uart_write_buffer(fd_gprs, frame_buffer[idx_output].data,
-	frame_buffer[idx_output].len);
+	result = uart_write_buffer(fd_gprs, frame_buffer[idx_output].data,
+			frame_buffer[idx_output].len);
 
-if (result < 0) {
+	if (result < 0) {
 #ifdef GPRS_DEBUG
-printf("Send frame in buffer error:\n");
-int i = 0;
-for (i = 0; i < frame_buffer[idx_output].len; i++) {
-	printf("%02x ", frame_buffer[idx_output].data[i]);
-}
-printf("\n");
-fflush(stdout);
+		printf("Send frame in buffer error:\n");
+		int i = 0;
+		for (i = 0; i < frame_buffer[idx_output].len; i++) {
+			printf("%02x ", frame_buffer[idx_output].data[i]);
+		}
+		printf("\n");
+		fflush(stdout);
 #endif
 //Error in gprs
-if (gprs_critical_errors <= GPRS_CRITICAL_ERROR_LIMIT)
-	gprs_critical_errors++;
-if (gprs_critical_errors <= GPRS_CRITICAL_ERROR_LIMIT) {
-	gprs_status = GPRS_ERROR;
-	gprs_configure = 0;
-	idx_input = idx_output;
-}
-return;
-}
+		if (gprs_critical_errors <= GPRS_CRITICAL_ERROR_LIMIT)
+			gprs_critical_errors++;
+		if (gprs_critical_errors <= GPRS_CRITICAL_ERROR_LIMIT) {
+			gprs_status = GPRS_ERROR;
+			gprs_configure = 0;
+			idx_input = idx_output;
+		}
+		return;
+	}
 
- //Update buffer index
- //NOTE: Output index will be updated when received send_ok
- //idx_output = (idx_output+1) % GPRS_FRAME_BUFFER_SIZE;
+	//Update buffer index
+	//NOTE: Output index will be updated when received send_ok
+	//idx_output = (idx_output+1) % GPRS_FRAME_BUFFER_SIZE;
 
 } // GPRS SEND FRAME IN BUFFER END
+

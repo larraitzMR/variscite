@@ -613,6 +613,7 @@ int main(void) {
 	return EXIT_SUCCESS;
 } // MAIN END
 
+
 void addTag(char epc[], uint8_t ant, int32_t rssi) {
 
 	char hora[9];
@@ -666,28 +667,28 @@ struct datosBD datSelect[50];
 struct recibidoEPC rec[50];
 int numGuardado;
 int numTuplas;
-char * listaEPC;
-
+const char * listaEPC[5];
 
 void *funcionDelHilo(void *parametro) {
 
-	char arrayEPC[24];
 	int jj = 0;
-
+	char epc[24];
 	while (1) {
 		printf("Funcion del hilo\n");
-
 		selectDataDB();
+		while (jj < numTuplas) {
+//			strcpy(epc, listaEPC[jj]);
+//			printf("EPC: %s \n",epc);
+			printf("EPC: %s i %d\n", listaEPC[jj], jj);
+			jj++;
+		}
+		gps_at_send_data("123465789012345679801324");
+//		gps_at_send_data(listaEPC, numTuplas);
+		sleep(20);
+		jj = 0;
+	}
 
-		while(jj < numTuplas){
-				printf("EPC: %s i %d\n", listaEPC[jj],jj);
-				jj++;
-		//		fflush();
-			}
-
-		enviarEPCporSMS();
-
-		//Para enviar por LORA
+	//Para enviar por LORA
 //		enviarEPCporSPI();
 //		sleep(1);
 //		for (int i = 1; i < numGuardado; i++) {
@@ -696,8 +697,6 @@ void *funcionDelHilo(void *parametro) {
 ////			updateDB(arrayEPC);
 //			sleep(1);
 //		}
-		sleep(20);
-	}
 }
 
 void enviarEPCporSPI() {
@@ -740,28 +739,14 @@ void enviarEPCporSPI() {
 
 }
 
-void enviarEPCporSMS(){
-	gps_at_send_data(&listaEPC, numTuplas);
-
-}
-
 static int callbackSelect(void *data, int argc, char **argv, char **azColName) {
-
 	char epc[24];
-	char readBuffer[24];
 
-//	strcpy(epc, argv[1]);
-//	sprintf(epc, "%s", epc);
-	printf("ARGV %s\n", argv[1]);
-//	strcpy(datSelect[numTuplas].EPC, argv[1]);
-//	strcpy(listaEPC[numTuplas], argv[1]);
-	listaEPC[numTuplas] = argv[1];
+	listaEPC[numTuplas] = (char *) malloc(256);
+	strcpy(datSelect[numTuplas].EPC, epc);
+	strcpy(listaEPC[numTuplas],argv[1]);
 	printf("Lista %s\n", listaEPC[numTuplas]);
-//	printf("Datos select %s\n", datSelect[numTuplas].EPC);
 	numTuplas++;
-	listaEPC = malloc(numTuplas * sizeof(char));
-
-
 	return 0;
 }
 
@@ -789,25 +774,7 @@ void selectDataDB() {
 	fflush(stdout);
 }
 
-void updateDB(char epc[24]) {
-//	printf("UPDATE DB\n");
+void enviarEPCporSMS(){
+	gps_at_send_data(&listaEPC, numTuplas);
 
-	int rc;
-	char *zErrMsg = 0;
-	char *sql[100];
-	const char* data = "Callback function called";
-
-//	sprintf(sql, "UPDATE PRUEBAEPC SET ENVIADO = 1 WHERE EPC = \"%s\"; SELECT * FROM PRUEBAEPC GROUP BY EPC;", epc);
-	sprintf(sql, "UPDATE PRUEBAEPC SET ENVIADO = 1 WHERE EPC = \"%s\";", epc);
-	printf("%s\n", sql);
-
-	/* Execute SQL statement */
-	rc = sqlite3_exec(db, sql, callback, (void*) data, &zErrMsg);
-
-	if (rc != SQLITE_OK) {
-		fprintf(stderr, "SQL error: %s\n", zErrMsg);
-		sqlite3_free(zErrMsg);
-	} else {
-		fprintf(stdout, "Operation done successfully\n");
-	}
 }
