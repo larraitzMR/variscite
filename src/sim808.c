@@ -891,49 +891,10 @@ void append(char *s, char c) {
 }
 
 /* GPS_AT_SEND_DATA: Send data to mobile */
-void gps_at_send_data(char *epc) {
-
-	char gprs_msg[255];
-	bzero(&gprs_msg, sizeof(gprs_msg));
-
-	char *at_cmd = "AT+CMGF=1\r";
-	printf("%s\n", at_cmd);
-	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-	sleep(1);
-
-	gprs_process_msg();
-
-	while(!recibidoOK){
-	}
-
-	sleep(1);
-
-	at_cmd = "AT+CMGS=\"+34649103025\"\r";
-	printf("%s\n", at_cmd);
-	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-	gprs_process_msg();
-
-	sleep(2);
-
-	at_cmd = epc;
-	printf("%s\n", at_cmd);
-	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-	at_cmd = "\x1a";
-	printf("%s\n", at_cmd);
-	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-} // GPS AT GET DATA
-
-/* GPS_AT_SEND_DATA: Send data to mobile */
-//void gps_at_send_data(char *epc, struct datosBD *dBD) {
-//void gps_at_send_data(char *epc[], int numTuplas) {
+//void gps_at_send_data(char *epc) {
 //
 //	char gprs_msg[255];
 //	bzero(&gprs_msg, sizeof(gprs_msg));
-//	int i = 0;
 //
 //	char *at_cmd = "AT+CMGF=1\r";
 //	printf("%s\n", at_cmd);
@@ -943,13 +904,11 @@ void gps_at_send_data(char *epc) {
 //
 //	gprs_process_msg();
 //
-//	while (!recibidoOK) {
-//		printf("ESPERANDO OK");
+//	while(!recibidoOK){
 //	}
 //
 //	sleep(1);
 //
-//	printf("ESPERANDO");
 //	at_cmd = "AT+CMGS=\"+34649103025\"\r";
 //	printf("%s\n", at_cmd);
 //	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
@@ -958,24 +917,70 @@ void gps_at_send_data(char *epc) {
 //
 //	sleep(2);
 //
-//	while (i < numTuplas) {
-//		printf("%s i %d\n", epc[i], i);
-//		strcpy(at_cmd, epc[i]);
-////		at_cmd = epc;
-//		printf("%s\n", at_cmd);
-//		result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-//		i++;
-//	}
+//	at_cmd = epc;
+//	printf("%s\n", at_cmd);
+//	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
 //
 //	at_cmd = "\x1a";
 //	printf("%s\n", at_cmd);
 //	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
 //
+//} // GPS AT GET DATA
+
+/* GPS_AT_SEND_DATA: Send data to mobile */
+//void gps_at_send_data(char *epc, struct datosBD *dBD) {
+void gps_at_send_data(char *epc[], int numTuplas) {
+
+	char gprs_msg[26];
+	int i = 0;
+
+	char *at_cmd = "AT+CMGF=1\r";
+	printf("%s\n", at_cmd);
+	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+
+	sleep(1);
+
+	gprs_process_msg();
+
+	while (!recibidoOK) {
+		printf("ESPERANDO OK");
+	}
+
+	sleep(1);
+
+	printf("ESPERANDO");
+	at_cmd = "AT+CMGS=\"+34649103025\"\r";
+	printf("%s\n", at_cmd);
+	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+
+	gprs_process_msg();
+
+	sleep(2);
+
+	while (i < numTuplas) {
+//		printf("%s i %d\n", epc[i], i);
+//		sprintf(at_cmd, "%s\n", epc[i]);
+//		strcpy(at_cmd, epc[i]);
+		at_cmd = epc[i];
+		printf("%s\n", at_cmd);
+		sprintf(gprs_msg, "%s\r", at_cmd);
+		printf("%s\n", gprs_msg);
+		result = uart_write_buffer(fd_gprs, gprs_msg, strlen(gprs_msg));
+		i++;
+//		result = uart_write_buffer(fd_gprs, "\r", 3);
+		sleep(2);
+		bzero(&gprs_msg, sizeof(gprs_msg));
+	}
+
+	at_cmd = "\x1a";
+	printf("%s\n", at_cmd);
+	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+
 //	at_cmd = epc;
 //	printf("%s\n", at_cmd);
 //	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-//
-//} // GPS AT GET DATA
+
+} // GPS AT GET DATA
 
 /* GPS_GET_LATITUDE: Returns gps latitude, previously obtained from gps */
 t_position gps_get_latitude(void) {

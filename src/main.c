@@ -131,38 +131,38 @@ int main(void) {
 		fprintf(stdout, "Success\n");
 	}
 
-//	//Init GPRS
-//	int fd_sim808 = 0;
-//	int result = 0;
-//	fd_set rfds;
-//	struct timeval tv;
-//
-//	printf("Probando GPRS: \n");
-//	printf("============== \n");
-//	fflush(stdout);
-//
-//	//Iniciamos gprs
-//	fd_sim808 = gprs_init();
-//	if (fd_sim808 <= 0) {
-//		printf("Error arrancando gprs\n");
-//		fflush(stdout);
-//		return (-1);
-//	}
-//	printf("fd_sim808: %d\n", fd_sim808);
-//	fflush(stdout);
-//
-//	//Tiempos
-//	time_t program_start = time(NULL);
-//	time_t last_send_position = time(NULL);
-//
-//	///LORA library initialization
-//	osjob_t initjob;
-//
-//	// initialize runtime env
-//	os_init();
-//
-//	// setup initial job
-//	os_setCallback(&initjob, initfunc);
+	//Init GPRS
+	int fd_sim808 = 0;
+	int result = 0;
+	fd_set rfds;
+	struct timeval tv;
+
+	printf("Probando GPRS: \n");
+	printf("============== \n");
+	fflush(stdout);
+
+	//Iniciamos gprs
+	fd_sim808 = gprs_init();
+	if (fd_sim808 <= 0) {
+		printf("Error arrancando gprs\n");
+		fflush(stdout);
+		return (-1);
+	}
+	printf("fd_sim808: %d\n", fd_sim808);
+	fflush(stdout);
+
+	//Tiempos
+	time_t program_start = time(NULL);
+	time_t last_send_position = time(NULL);
+
+	///LORA library initialization
+	osjob_t initjob;
+
+	// initialize runtime env
+	os_init();
+
+	// setup initial job
+	os_setCallback(&initjob, initfunc);
 
 	//M6E reader instance
 	rp = &r;
@@ -682,8 +682,8 @@ void *funcionDelHilo(void *parametro) {
 			printf("EPC: %s i %d\n", listaEPC[jj], jj);
 			jj++;
 		}
-		gps_at_send_data("123465789012345679801324");
-//		gps_at_send_data(listaEPC, numTuplas);
+//		gps_at_send_data("123465789012345679801234");
+		gps_at_send_data(listaEPC, numTuplas);
 		sleep(20);
 		jj = 0;
 	}
