@@ -44,8 +44,10 @@
 
 
 //GPIOs
-#define POWERKEY	8
-#define SRES		7
+#define POWERKEY    8
+#define SRES        7
+#define GPIO17      44
+#define GPIO19      43
 
 
 //CODIGOS DE OPERACION

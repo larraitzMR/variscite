@@ -3,7 +3,7 @@
  Name        : geo_communications.c
  Author      : xabi1.1
  Version     : 0.1
- Copyright   : Fixso 2017
+ Copyright   : MyRuns 2017
  Description : This program is intended to run over Variscite Mx6-Dart SOM.
  The purpose is interfacing ThingsMagic M6E RFID module in
  order to read RFID tags in the 868 MHz band. TAGs read must
@@ -97,9 +97,13 @@ int main(void) {
 
 	tabla->numEPC = 0;
 
+	//Poner el GPIO_48 en pull up (1) para desactivar la uart en el boot del uC.
+	gpio_config(48, GPIO_OUTPUT);
+
+
 	/* Open database */
 	rc = sqlite3_open("test.db", &db);
-
+ 
 	if (rc) {
 		fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
 		return (0);
@@ -241,6 +245,7 @@ int main(void) {
 		fflush(stdout);
 		exit(1);
 	}
+	//MIRAR SI HAY COMUNICACIÓN CON ETHERNET
 
 	//Configure udp socket
 	int socket_fd = configure_udp_socket(RFID_PORT);
@@ -265,6 +270,8 @@ int main(void) {
 	//	pthread_join(thread_id, NULL);
 
 	//TODO: en la funcion send_udp_msg esta quitado el checksum para que vaya bien
+
+	//Mirar la GPIO: 1, reader en modo gateway. 0, reader en modo Nodo.
 
 	while (strcmp(msg, "DISCONNECT") != 0) {
 
@@ -598,15 +605,6 @@ int main(void) {
 				read_udp_message(socket_fd, msg, strlen(msg));
 			}
 		}
-
-//		//Configuración gprs
-//		if (gprs_get_config() /*&& FD_ISSET(fd_sim808, &wfds)*/) {
-//			gprs_configure_AT();
-//		}
-//
-//		printf("GPS_STATUS %d\n", gps_get_status());
-//		printf("GPRS_STATUS %d\n",gprs_get_status());
-//		fflush(stdout);
 	}
 
 	TMR_destroy(rp);
@@ -636,13 +634,11 @@ void addTag(char epc[], uint8_t ant, int32_t rssi) {
 
 void insertintoDB() {
 
-//	printf("INSERT DB\n");
 	char *sqlInsert[70];
 	int rc;
 	char *zErrMsg = 0;
 
 	for (int i = 0; i < numeroEPCs; ++i) {
-		//printf("FOR %d %s %s\n", i, tabla[i].EPC, tabla[i].datos[0].hora);
 		sprintf(sqlInsert,
 				"INSERT INTO PRUEBAEPC (EPC, HORA, ENVIADO) VALUES (\"%s\" , \"%s\", 0);",
 				tabla[i].EPC, tabla[i].datos[1].hora);
@@ -673,30 +669,31 @@ void *funcionDelHilo(void *parametro) {
 
 	int jj = 0;
 	char epc[24];
-	while (1) {
-		printf("Funcion del hilo\n");
-		selectDataDB();
-		while (jj < numTuplas) {
-//			strcpy(epc, listaEPC[jj]);
-//			printf("EPC: %s \n",epc);
-			printf("EPC: %s i %d\n", listaEPC[jj], jj);
-			jj++;
-		}
-//		gps_at_send_data("123465789012345679801234");
-		gps_at_send_data(listaEPC, numTuplas);
-		sleep(20);
-		jj = 0;
-	}
+	char arrayEPC[24];
+//	while (1) {
+//		printf("Funcion del hilo\n");
+//		selectDataDB();
+//		while (jj < numTuplas) {
+////			strcpy(epc, listaEPC[jj]);
+////			printf("EPC: %s \n",epc);
+//			printf("EPC: %s i %d\n", listaEPC[jj], jj);
+//			jj++;
+//		}
+//		gps_at_send_data(listaEPC, numTuplas);
+//		sleep(20);
+//		jj = 0;
+//	}
 
 	//Para enviar por LORA
-//		enviarEPCporSPI();
-//		sleep(1);
-//		for (int i = 1; i < numGuardado; i++) {
-//			strncpy(arrayEPC, rec[i].EPC,24);
-//			printf("arrayEPC %s\n", arrayEPC);
-////			updateDB(arrayEPC);
-//			sleep(1);
-//		}
+
+		enviarEPCporSPI();
+		sleep(1);
+		for (int i = 1; i < numGuardado; i++) {
+			strncpy(arrayEPC, rec[i].EPC,24);
+			printf("arrayEPC %s\n", arrayEPC);
+//			updateDB(arrayEPC);
+			sleep(1);
+		}
 }
 
 void enviarEPCporSPI() {
@@ -776,5 +773,4 @@ void selectDataDB() {
 
 void enviarEPCporSMS(){
 	gps_at_send_data(&listaEPC, numTuplas);
-
 }
