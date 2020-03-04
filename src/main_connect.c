@@ -39,16 +39,20 @@ int main(void) {
 	int line_count = 2;
 	ssize_t line_size;
 	FILE *fp;
-	char *estados[5];
+	FILE *fp2;
 	int i = 0;
     char str[512];
 
+
 	char *token;
+	char *estado;
 	char *eth[4];
 	char *wlan[4];
 	int ethActive = 0;
 	int wlanActive = 0;
 	int gprsActive = 0;
+	char ipAdd[18];
+	char *ipFinal;
 
 
 	fp = fopen("status.txt", "r"); // read mode
@@ -61,36 +65,63 @@ int main(void) {
 
    while( fgets (str, sizeof(str), fp)!=NULL ) {
 		if(strstr(str,"ethernet")) {
+			printf("ethernet\n"); 
 			fputs (str, stdout); /* write the line */
 			token = strtok(str," "); 
+			i = 0;
 		    while (token != NULL) { 
 		    	eth[i] = token;
 		       	//printf("Estado %s\n", eth[i]); 
 		        token = strtok(NULL, " "); 
 		        i++;
 		    }
-			if(strcmp(eth[2], "connected") == 0) {
+		    if(strcmp(eth[2], "unavailable") == 0) {
+				printf("ethernet disconnected\r\n");
+			}
+			else if(strcmp(eth[2], "connected") == 0) {
 				ethActive = 1;
 				printf("activado eth\r\n");
-				i = 0;
+				break;
 			}
-			break;
+
 		} 
-		else if(strstr(str,"wifi")) {
+		if(strstr(str,"wifi")) {
+			printf("wifi\n"); 
 			fputs (str, stdout); /* write the line */
 			token = strtok(str," "); 
+			i = 0;
 		    while (token != NULL) { 
 		    	wlan[i] = token;
 		       	//printf("Estado %s\n", wlan[i]); 
 		        token = strtok(NULL, " "); 
 		        i++;
 		    }
-			if(strcmp(wlan[2], "connected") == 0) {
-				ethActive = 1;
-				printf("activado eth\r\n");
-				i = 0;
+		   	estado = *&wlan[2];	
+		    if (strcmp(estado, "unavailable") == 0) {
+				printf("unavailable\n"); 
+				system("nmcli radio wifi on");
+				system("nmcli device status > status.txt");
+
+				system("nmcli device wifi connect MYRUNS password RunMyRuns841");
+			   	if (strstr(system("nmcli connection show --active"), "wlan0")){
+			   		printf("encontrado wifi\r\n");
+			   	}
 			}
-			break;
+	   		if (strcmp(estado, "disconnected") == 0){
+			   	printf("wifi disconnected\n");
+
+			   	//conectarse al wifi
+			   	system("nmcli device wifi connect MYRUNS password RunMyRuns841");
+			   	if (strstr(system("nmcli connection show --active"), "wlan0")){
+			   		printf("encontrado wifi\r\n");
+			   	}
+			}
+			if(strcmp(estado, "connected") == 0) {
+				wlanActive = 1;
+				printf("activado wifi\r\n");
+				break; 
+			}
+			
 		} 
 		/*else {
 			gprsActive = 1;
@@ -100,6 +131,7 @@ int main(void) {
 
     //  puts(str); 
    }
+
 
    if(ethActive == 0 && wlanActive == 0){
    		gprsActive = 1;
@@ -123,11 +155,36 @@ int main(void) {
         i++;
     }
 
-	fclose(fp);
+	fclose(fp); */
 
-	if (strcmp(estados[0], "connected") == 0) {
+  	system("nmcli > connecDevices.txt");
+
+	fp2 = fopen("connecDevices.txt", "r"); // read mode
+
+	if (fp2 == NULL)
+	{
+	  perror("Error while opening the file.\n");
+	  exit(EXIT_FAILURE);
+	}
+ 	while( fgets (str, sizeof(str), fp2)!=NULL ) {
+		fputs (str, stdout); /* write the line */
+ 		if(strstr(str,"inet4")) {
+ 			 strncpy (ipAdd, str + 6, 16);
+ 			 	//printf("IP: %s\n", ipAdd);
+
+ 			 break;
+ 		}
+ 	}
+
+	ipFinal = strtok(ipAdd, "/");
+	printf("IP: %s\n", ipFinal);
+
+	
+
+
+	if (ethActive == 1) {
 		//Hay ethernet
-		fd = socket(AF_INET, SOCK_DGRAM, 0);
+	/*	fd = socket(AF_INET, SOCK_DGRAM, 0);
 
 		ifr.ifr_addr.sa_family = AF_INET;
 
@@ -140,11 +197,12 @@ int main(void) {
 
 		printf("%s\n", address);
 
-		close(fd);
-	} else if (strcmp(estados[3], "enabled") == 0){
+		close(fd); */
+		 	printf("IP: %s\n", ipFinal);
+	} else if (wlanActive == 1){
 		//El wifi esta enabled
+		 	printf("IP: %s\n", ipFinal);
 
-	}*/
+	}
 
 }
-
