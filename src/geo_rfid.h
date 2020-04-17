@@ -19,6 +19,7 @@
 #define CONTROL_PORT 		5556 //UDP port for control module
 #define COMMUNICATIONS_PORT 5557 //UDP port for communications module
 #define RFID_PORT			5558 //UDP port for rfid module
+#define WEB_PORT			5559 //UDP port for rfid module
 #define CO_KEEPALIVE 		0x10 //Code of operation for keepalive messaging
 #define CO_RFID_REPORT		0x20 //Code of operation used by geo_rfid to repport a tag to communication module
 #define ID_GEORFID			0x03
