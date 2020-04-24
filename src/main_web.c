@@ -1,4 +1,4 @@
-/*
+ /*
  ============================================================================
  Name        : geo_communications.c
  Author      : xabi1.1
@@ -107,8 +107,12 @@ int main(void) {
 	}
 
 	enviar_udp_msg(socket_fd, Ready, WEB_PORT);
-	printf("msg: %s\n", msg);
-	read_udp_message(socket_fd, msg, strlen(msg));
+	while (strncmp(msg, "CONECTADO", 9) != 0) {
+//		read_udp_message(socket_fd, msg, strlen(msg));
+//		printf("msg: %s\n", msg);
+		enviar_udp_msg(socket_fd, Ready, WEB_PORT);
+		printf("Enviado: %s\n", Ready);
+	}
 
 
 	while (strcmp(msg, "DISCONNECT") != 0) {

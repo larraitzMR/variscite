@@ -221,8 +221,9 @@ void gprs_configure_AT(void) {
 void gprs_process_msg(void) {
 	char gprs_msg[255];
 	char separators[4] = "\r\n";
-	char separators2[6] = ",:\r\n ";
-	//char separators3[9] = "+,:/\"\r\n ";
+	char separators2[6] = ",:\r\n";
+	char separators3[9] = "+,:()\"\r\n";
+	//char separators3[9] = "()";
 	char *temp;
 	//char temp2[128];
 	char *temp3;
@@ -413,6 +414,25 @@ void gprs_process_msg(void) {
 					}
 				} else {
 					gps_status = GPS_NO_COVERAGE;
+				}
+			} else if ((strncmp("+COPS:", temp, 6) == 0)) {
+				//ENVIAR DIRECTAMENTE EL TEMP.
+
+				//Format: +COPS: (1,"Retevision Movil","AMENA","21403"),(2,"MOVISTAR","MSTAR","21407"),(1)
+				temp3 = strtok(temp, separators3); //+CGNSINF
+				printf("COPS %s\n", temp3);
+				temp3 = strtok(NULL, separators3); //run status
+				int i = 0;
+				char* cops;
+				//bzero(cops, 10);
+
+				if(temp3 != NULL){
+					 while(temp3 != NULL){
+					 	//strcpy(cops[i], temp3);
+					 	printf("Token: %s\n", temp3);
+            			temp3 = strtok(NULL, separators3);
+            			i++;
+            		}
 				}
 			} else if (strncmp("+PDP: DEACT", temp, 11) == 0) {
 				if ((gprs_status != GPRS_ERROR)
@@ -1221,4 +1241,72 @@ void gprs_send_frame_in_buffer(void) {
 	//idx_output = (idx_output+1) % GPRS_FRAME_BUFFER_SIZE;
 
 } // GPRS SEND FRAME IN BUFFER END
+
+void gprs_get_network(void){
+
+	char gprs_msg[26];
+	int i = 0;
+	char separators[4] = "\r\n";
+	char separators2[5] = ":\r\n ";
+	char separators3[9] = "()";
+	char* temp;
+	char* temp3;
+
+	char *at_cmd = "AT+COPS=?\r";
+	printf("%s\n", at_cmd);
+	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+	gprs_process_msg();
+}
+
+void gprs_set_network(char* network){
+ 
+	char gprs_msg[26];
+	int i = 0;
+
+	char *at_cmd = "AT+COPS=\r";
+	sprintf(gprs_msg, "AT+COPS=4,2,\"%s\"\r", network);
+	printf("%s\n", at_cmd); 
+	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+}
+
+void gprs_send_SMS(char* number, char* text){
+
+	char gprs_msg[26];
+	int i = 0;
+
+	char *at_cmd = "AT+CMGF=1\r";
+	printf("%s\n", at_cmd);
+	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+
+	sleep(1);
+
+	gprs_process_msg();
+
+	while (!recibidoOK) {
+		printf("ESPERANDO OK\r\n");
+	}
+
+	printf("ESPERANDO\r\n");
+	at_cmd = "AT+CMGS=";
+	//printf("%s\n", at_cmd);
+	//sprintf(gprs_msg, "%s", at_cmd);
+	//printf("%s\n", gprs_msg);
+	sprintf(gprs_msg, "%s\"%s\"\r",at_cmd, number);
+	//sprintf(at_cmd, "%s\r", number)	;
+	//strcat(at_cmd, number);
+	//at_cmd = "AT+CMGS=\"+34649103025\"\r";
+	printf("%s\n", gprs_msg);
+	result = uart_write_buffer(fd_gprs, gprs_msg, strlen(gprs_msg));
+
+	gprs_process_msg();
+
+	//sleep(2);
+	sprintf(gprs_msg, "%s\r", text);
+	result = uart_write_buffer(fd_gprs, gprs_msg, strlen(gprs_msg));
+
+	at_cmd = "\x1a";
+	printf("%s\n", at_cmd);
+	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+}
+
 
