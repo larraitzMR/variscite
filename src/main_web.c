@@ -46,36 +46,65 @@ int main(void) {
 
 	int n = 0;
 	char msg[50];
+	char* network;
+	char net[20];
 
+	//Init GPRS
+	int fd_sim808 = 0;
+	int result = 0;
+	fd_set rfds;
+	struct timeval tv;
+
+	printf("Probando GPRS: \n");
+	printf("============== \n");
+	fflush(stdout);
+
+	//Iniciamos gprs
+	fd_sim808 = gprs_init();
+	if (fd_sim808 <= 0) {
+		printf("Error arrancando gprs\n");
+		fflush(stdout);
+		return (-1);
+	}
+	printf("fd_sim808: %d\n", fd_sim808);
+	fflush(stdout);
 	
 	gprs_fd = create_tcp_conection(5554) ;
-	//send_tcp_message("Mensaje TCP");
+
+	//send_tcp_message("CONNECTED");
 	
 
 	while(1){
 	   	read_tcp_message(msg);
-	   //	printf("msg: %s\n", msg);
 	    if (strncmp(msg, "GET_NETWORK", 11) == 0) {
 			printf("msg: %s\n", msg);
-			int longitud = strlen(msg) - 11;
-			char *nuevo = (char*) malloc(sizeof(char) * (longitud + 1));
-			nuevo[longitud] = '\0';
-			strncpy(nuevo, msg + 11, longitud);
+			//send_tcp_message("Mensaje TCP");
+			gprs_get_network();
 		}
 		else if (strncmp(msg, "SET_NETWORK", 11) == 0) {
 			printf("msg: %s\n", msg);
 			int longitud = strlen(msg) - 11;
 			char *nuevo = (char*) malloc(sizeof(char) * (longitud + 1));
 			nuevo[longitud] = '\0';
-			strncpy(nuevo, msg + 11, longitud);
+			strncpy(nuevo, msg + 12, longitud);
+			printf(" : %s\n", nuevo);
+			gprs_set_network(nuevo);
+
 		}
 		else if (strncmp(msg, "SEND_SMS", 8) == 0) {
+
 			printf("msg: %s\n", msg);
-			int longitud = strlen(msg) - 11;
+			char* mens = strtok(msg, " ");
+			/*int longitud = strlen(msg) - 8;
 			char *nuevo = (char*) malloc(sizeof(char) * (longitud + 1));
 			nuevo[longitud] = '\0';
-			strncpy(nuevo, msg + 11, longitud);
+			strncpy(nuevo, msg + 8, longitud);
+			printf(" : %s\n", nuevo);*/
+			char* telf = strtok(NULL, " ");	
+			char* text = strtok(NULL, " ");
+			gprs_send_SMS(telf, text);
 		}
+
 	}
 	fflush(stdout);
 

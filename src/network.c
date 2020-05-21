@@ -90,6 +90,7 @@ int create_tcp_conection(int portNum) {
 		printf("Cliente recibido\n");
 	}
 
+
 	return server;
 }
 
@@ -102,7 +103,8 @@ void send_tcp_message(char *data){
 	  perror(NULL);
 	  exit(-1);
 	}
- 
+	printf("Envío correcto\n");
+
 }
 
 void read_tcp_message(char *buffer) {

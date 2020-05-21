@@ -1,14 +1,13 @@
 /*
  * sim808.c
  *
- *  Created on: Oct 2, 2017
- *  Author: xabi1.1
+ *  Created on: Apr 1, 2020
+ *  Author: Larraitz
  *
- *  Attention: If sleep mode causes any trouble, a single character must be send
- *  		   before any at command, waiting 100ms between single character and at.
  */
 
 #include "sim808.h"
+#include "network.h"
 
 // =======================================================================
 //
@@ -47,24 +46,10 @@ int idx_output;
 //  PRIVATE FUNCTION DECLARATION
 //
 // =======================================================================
-void gprs_at_test(void);
-void gprs_at_allow_sleep(void);
-void gprs_at_enter_pin(void);
-void gprs_at_check_network(void);
-void gprs_at_set_context(void);
-void gprs_at_set_APN(char *apn, char *user, char *pass);
-void gprs_at_network_up(void);
-void gprs_at_get_ip(void);
-void gprs_at_shut(void);
-void gprs_at_close_con(void);
-
-void gprs_at_open_tcp_con(char *ip, unsigned int port);
-int gprs_is_ip_v4(char* ip);
-unsigned char gprs_checksum(unsigned char *data, short len);
-void gprs_send_frame_in_buffer(void);
 
 int recibidoOK = 0;
 int recibidoEscribe = 0;
+int notCops = 0;
 
 // =======================================================================
 //
@@ -143,78 +128,6 @@ void gprs_close(void) {
 
 } // GPRS CLOSE END
 
-/* GPRS_CONFIGURE_AT: Configure GPRS via AT commands. Implements a state machine
- * 					  This function must be called twice, since first time, just
- * 					  basic tests are performed, and sleep configured if available.
- * 					  With basic configuration, only GPS is available for use.
- * */
-void gprs_configure_AT(void) {
-	switch (gprs_status) {
-	case GPRS_OFF:
-		gprs_config_mal = 0;
-		gprs_at_test();
-		break;
-	case GPRS_TEST_OK:
-		gprs_config_mal = 0;
-		gprs_at_imei();
-		break;
-	case GPRS_IMEI_OK:
-		gprs_config_mal = 0;
-#if defined(SUPPORT_SLEEP)
-		gprs_at_allow_sleep();
-#elif defined(PIN_REQUIRED)
-		gprs_at_enter_pin();
-#else
-		gprs_at_check_network();
-#endif
-		break;
-	case GPRS_SLEEP_ALLOWED_OK:
-		gprs_config_mal = 0;
-#if defined(PIN_REQUIRED)
-		gprs_at_enter_pin();
-#else
-		gprs_at_check_network();
-#endif
-		break;
-	case GPRS_PIN_OK:
-		gprs_config_mal = 0;
-		gprs_at_check_network();
-		break;
-	case GPRS_NETWORK_OK:
-		gprs_config_mal = 0;
-		gprs_at_set_context();
-		break;
-	case GPRS_CONTEXT_OK:
-		gprs_config_mal = 0;
-		gprs_at_set_APN(GPRS_APN_NAME, GPRS_APN_USER, GPRS_APN_PASS);
-		break;
-	case GPRS_APN_READY:
-		gprs_config_mal = 0;
-		gprs_at_network_up();
-		break;
-	case GPRS_NETWORK_UP:
-		gprs_config_mal = 0;
-		gprs_at_get_ip();
-		break;
-	case GPRS_PDP_DEACT:
-		gprs_config_mal = 0;
-		gprs_at_shut();
-		break;
-	default:
-		usleep(T_100MS);
-		if (gprs_config_mal <= GPRS_CONFIG_MAL_LIMIT)
-			gprs_config_mal++;
-		if (gprs_config_mal == GPRS_CONFIG_MAL_LIMIT) {
-			//Configuration process ended with critical errors
-			gprs_status = GPRS_ERROR;
-			gprs_configure = 0;
-			printf("GPRS: Error limit during configuration reached\n");
-			fflush(stdout);
-		}
-		break;
-	}
-} // END GPRS CONFIGURE AT
-
 /* GPRS_PROCESS_MSG: Parse responses to AT commands received from GPRS module.
  * 					 Changes state machine status as a result.
  */
@@ -227,6 +140,8 @@ void gprs_process_msg(void) {
 	char *temp;
 	//char temp2[128];
 	char *temp3;
+
+	char msg[100];
 
 	//Clean buffer
 	bzero(&gprs_msg, sizeof(gprs_msg));
@@ -245,7 +160,6 @@ void gprs_process_msg(void) {
 				fflush(stdout);
 			}
 #endif
-
 			if (temp[0] == '>') {
 				recibidoEscribe = 1;
 				printf("recibido escribe\n");
@@ -285,113 +199,7 @@ void gprs_process_msg(void) {
 
 				recibidoOK = 1;
 				printf("recibido ok\n");
-				//If we are in config mode, move to next state
-				if ((gprs_configure) && (gprs_status == GPRS_IDLE)) {
-					switch (gprs_prev_status) {
-					case GPRS_OFF:
-						gprs_status = GPRS_TEST_OK;
-						//#if !defined(SUPPORT_SLEEP)
-						//gprs_configure=0;
-						//#endif
-						break;
-					case GPRS_IMEI_OK:
-#if defined(SUPPORT_SLEEP)
-						gprs_status=GPRS_SLEEP_ALLOWED_OK;
-						gprs_configure=0;
-#elif defined(PIN_REQUIRED)
-						gprs_status=GPRS_PIN_OK;
-#else
-						gprs_status = GPRS_NETWORK_OK;
-#endif
-						break;
-					case GPRS_SLEEP_ALLOWED_OK:
-#if defined(PIN_REQUIRED)
-						gprs_status=GPRS_PIN_OK;
-#else
-						gprs_status = GPRS_NETWORK_OK;
-#endif
-						break;
-					case GPRS_PIN_OK:
-						gprs_status = GPRS_NETWORK_OK;
-						break;
-					case GPRS_NETWORK_OK:
-						gprs_status = GPRS_CONTEXT_OK;
-						break;
-					case GPRS_CONTEXT_OK:
-						gprs_status = GPRS_APN_READY;
-						break;
-					case GPRS_APN_READY:
-						gprs_status = GPRS_NETWORK_UP;
-						break;
-						//case GPRS_NETWORK_UP:
-						//	gprs_status=GPRS_IP_OK;
-						//	break;
-					default:
-						break;
-					} // End switch
-				}
-
-				//TODO: OK response to other commands, different from configuration
-			} else if (gprs_is_ip_v4(temp)) {
-				//Local ip received
-				gprs_critical_errors = 0;
-				if ((gprs_configure) && (gprs_status == GPRS_IDLE)
-						&& (gprs_prev_status == GPRS_NETWORK_UP)) {
-					gprs_status = GPRS_IP_OK;
-					gprs_configure = 0;
-				}
-			} else if (strncmp("CONNECT OK", temp, 10) == 0) {
-				gprs_critical_errors = 0;
-				gprs_status = GPRS_TCP_READY;
-				if (idx_output != idx_input) {
-					//Send message from buffer
-					gprs_send_frame_in_buffer();
-				}
-			} else if (strncmp("CLOSE OK", temp, 8) == 0) {
-				gprs_status = GPRS_IP_OK;
-				idx_input = idx_output; //Just to be sure that everything is ok
-			} else if (strncmp("CLOSED", temp, 6) == 0) {
-				gprs_status = GPRS_IP_OK;
-				//In this case, some messages can be lost
-				if (idx_input != idx_output) {
-					printf(
-							"TCP connection closed unexpectedly: Some frames will be lost\n");
-					fflush(stdout);
-					idx_input = idx_output;
-				}
-			} else if (strncmp("SEND OK", temp, 7) == 0) {
-				gprs_critical_errors = 0;
-				//Update buffer index
-				idx_output = (idx_output + 1) % GPRS_FRAME_BUFFER_SIZE;
-				gprs_send_mal = 0;
-				if (idx_input != idx_output) {
-					//If there is more messages in buffer, send another one
-					gprs_send_frame_in_buffer();
-				} else {
-					//In other case, close connection
-					gprs_at_close_con();
-				}
-			} else if (strncmp("SEND FAIL", temp, 9) == 0) {
-				//Don't update buffer index
-				gprs_send_mal++;
-				if (gprs_send_mal == GPRS_SEND_MAL_LIMIT) {
-					//Status to PDP DEACT, so we are forced to reset connection
-					if (gprs_status != GPRS_ERROR) {
-						gprs_status = GPRS_PDP_DEACT;
-						gprs_configure = 1;
-					}
-
-					//Messages will be lost
-					printf(
-							"Restarting network connection: Some frames will be lost\n");
-					fflush(stdout);
-					idx_input = idx_output;
-				}
-			} else if (strncmp("SHUT OK", temp, 7) == 0) {
-				if (gprs_status != GPRS_ERROR) {
-					gprs_status = GPRS_NETWORK_OK;
-					gprs_configure = 1;
-				}
+			
 			} else if ((strncmp("+CGNSINF:", temp, 9) == 0)
 					|| (strncmp("+UGNSINF:", temp, 9) == 0)) {
 				//Format: +CGNSINF: <GNSSS run status>, <fix status>, <UTC Date & time>, <latitude>, <longitude> .....
@@ -417,9 +225,18 @@ void gprs_process_msg(void) {
 				}
 			} else if ((strncmp("+COPS:", temp, 6) == 0)) {
 				//ENVIAR DIRECTAMENTE EL TEMP.
-
+				sprintf(msg, "%s\n", temp);
+				send_tcp_message(msg);
+				//send_msg(temp);
+				int cont = 0; /*
+				while (cont < 5) {
+					send_tcp_message(temp);
+					cont++;
+				}*/
+				//send_tcp_message(temp);
 				//Format: +COPS: (1,"Retevision Movil","AMENA","21403"),(2,"MOVISTAR","MSTAR","21407"),(1)
-				temp3 = strtok(temp, separators3); //+CGNSINF
+				notCops = 1;
+				/*temp3 = strtok(temp, separators3); //+CGNSINF
 				printf("COPS %s\n", temp3);
 				temp3 = strtok(NULL, separators3); //run status
 				int i = 0;
@@ -433,7 +250,7 @@ void gprs_process_msg(void) {
             			temp3 = strtok(NULL, separators3);
             			i++;
             		}
-				}
+				}*/
 			} else if (strncmp("+PDP: DEACT", temp, 11) == 0) {
 				if ((gprs_status != GPRS_ERROR)
 						&& (gprs_status != GPRS_LOW_POWER)) {
@@ -503,449 +320,6 @@ void gprs_at_test(void) {
 	gprs_prev_status = GPRS_OFF;
 } // GPRS AT TEST END
 
-/* GPRS AT IMEI: Send AT command to request imei */
-void gprs_at_imei(void) {
-	char *at_cmd = "AT+CGSN\r";
-
-	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-#ifdef GPRS_DEBUG
-	printf("%s\n", at_cmd);
-	if (result < 0) {
-		printf("GPRS: Error enviando comando AT+CGSN\n");
-	}
-	fflush(stdout);
-#endif
-
-	gprs_status = GPRS_IDLE;
-	gprs_prev_status = GPRS_TEST_OK;
-} // GPRS AT IMEI END
-
-/* GPRS_AT_MINIMUM_FUNCTIONALITY: This function is called when initializating GPRS to allow module
- * 								  to enter in a minimum functionality mode with RF systems OFF.
- * 								  GPS can be used. Full configuration is required after exiting this mode.
- */
-void gprs_at_minimum_functionality(void) {
-	char *at_cmd = "AT+CFUN=0\r";
-
-	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-#ifdef GPRS_DEBUG
-	printf("%s\n", at_cmd);
-	if (result < 0) {
-		printf("GPRS: Error enviando comando AT+CFUN\n");
-	}
-	fflush(stdout);
-#endif
-
-	gprs_status = GPRS_LOW_POWER;
-
-} // GPRS AT MINIMUM FUNCTIONALITY END
-
-/* GPRS_AT_FULL_FUNCTIONALITY: This module performs a hard reset, resulting in a GPRS module waking up
- * 							   in normal functionality mode. GPRS status and GPS status are reset to PWR_OFF.
- * 							   GPRS enters configuration mode.
- */
-void gprs_at_full_functionality(void) {
-	char *at_cmd = "AT+CFUN=1,1\r";
-
-	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-#ifdef GPRS_DEBUG
-	printf("%s\n", at_cmd);
-	if (result < 0) {
-		printf("GPRS: Error enviando comando AT+CFUN\n");
-	}
-	fflush(stdout);
-#endif
-
-	//Init global variables: A copy of this initialization must be performed in gprs_init
-	gprs_status = GPRS_OFF;
-	gprs_prev_status = GPRS_OFF;
-	gps_status = GPS_OFF;
-	gprs_configure = 1; //Different from gprs_init
-	gprs_config_mal = 0;
-	gprs_critical_errors = 0;
-	gprs_buffer_full = 0;
-	idx_input = 0;
-	idx_output = 0;
-} // GPRS AT FULL FUNCTIONALITY END
-
-/* GPRS_AT_ALLOW_SLEEP: Puts gprs module in automatic sleep mode (low consumption)
- * 						Module enters sleep if there is no data in uart and no interrupts in gpio.
- * 						Write wake character for exit sleep, and wait 100ms before sending at commands.
- */
-void gprs_at_allow_sleep(void) {
-	char *at_cmd = "AT+CSCLK=2\r";
-
-	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-#ifdef GPRS_DEBUG
-	printf("%s\n", at_cmd);
-	if (result < 0) {
-		printf("GPRS: Error enviando comando AT+CGSN\n");
-	}
-	fflush(stdout);
-#endif
-
-	gprs_status = GPRS_IDLE;
-	gprs_prev_status = GPRS_IMEI_OK;
-} // GPRS AT ALLOW SLEEP END
-
-/* GPRS_AT_ENTER_PIN: Enter pin for sim card */
-void gprs_at_enter_pin(void) {
-	char at_cmd[255];
-
-	//Wake up module
-#if defined(SUPPORT_SLEEP)
-	uart_write_buffer(fd_gprs, "a\r", 2);
-	usleep(T_100MS);
-#endif
-
-	bzero(&at_cmd, 255);
-	sprintf(at_cmd, "AT+CPIN=%s\r", "3870");
-
-	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-#ifdef GPRS_DEBUG
-	printf("%s\n", at_cmd);
-	if (result < 0) {
-		printf("GPRS: Error enviando comando AT+CPIN\n");
-	}
-	fflush(stdout);
-#endif
-
-	gprs_prev_status = gprs_status;
-	gprs_status = GPRS_IDLE;
-} // GPRS AT ENTER PIN
-
-/* GPRS_AT_CHECK_NETWORK: Send at command to check if module is registered in the network
- * 						  This process might take a while. If negative response, repeat state
- */
-void gprs_at_check_network(void) {
-	char *at_cmd = "AT+CREG?\r";
-
-	//Wake up module
-#if defined(SUPPORT_SLEEP)
-	uart_write_buffer(fd_gprs, "a\r", 2);
-	usleep(T_100MS);
-#endif
-
-	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-#ifdef GPRS_DEBUG
-	printf("%s\n", at_cmd);
-	if (result < 0) {
-		printf("GPRS: Error enviando comando AT+CREG\n");
-	}
-	fflush(stdout);
-#endif
-
-	gprs_prev_status = gprs_status;
-	gprs_status = GPRS_IDLE;
-
-} // GPRS AT CHECK NETWORK END
-
-/* GPRS_AT_SET_CONTEXT: Send at command to set GPRS context */
-void gprs_at_set_context(void) {
-	char *at_cmd = "AT+CGATT=1\r";
-
-	//Wake up module
-#if defined(SUPPORT_SLEEP)
-	uart_write_buffer(fd_gprs, "a\r", 2);
-	usleep(T_100MS);
-#endif
-
-	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-#ifdef GPRS_DEBUG
-	printf("%s\n", at_cmd);
-	if (result < 0) {
-		printf("GPRS: Error enviando comando AT+CGATT\n");
-	}
-	fflush(stdout);
-#endif
-
-	gprs_status = GPRS_IDLE;
-	gprs_prev_status = GPRS_NETWORK_OK;
-} // GPRS AT SET CONTEXT END
-
-/* GPRS_AT_SET_APN: Send at command to configure apn information */
-void gprs_at_set_APN(char *apn, char *user, char *pass) {
-	char at_cmd[255];
-
-#if defined(SUPPORT_SLEEP)
-	uart_write_buffer(fd_gprs, "a\r", 2);
-	usleep(T_100MS);
-#endif
-
-	bzero(&at_cmd, 255);
-	sprintf(at_cmd, "AT+CSTT=\"%s\",\"%s\",\"%s\"\r", apn, user, pass);
-
-	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-#ifdef GPRS_DEBUG
-	printf("%s\n", at_cmd);
-	if (result < 0) {
-		printf("GPRS: Error enviando comando AT+CSTT\n");
-	}
-	fflush(stdout);
-#endif
-
-	gprs_status = GPRS_IDLE;
-	gprs_prev_status = GPRS_CONTEXT_OK;
-} // GPRS AT SET APN END
-
-/* GPRS_AT_NETWORK_UP: Brings up the gprs wireless connection with the apn previously configured */
-void gprs_at_network_up(void) {
-	char *at_cmd = "AT+CIICR\r";
-
-#if defined(SUPPORT_SLEEP)
-	uart_write_buffer(fd_gprs, "a\r", 2);
-	usleep(T_100MS);
-#endif
-
-	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-#ifdef GPRS_DEBUG
-	printf("%s\n", at_cmd);
-	if (result < 0) {
-		printf("GPRS: Error enviando comando AT+CIICR\n");
-	}
-	fflush(stdout);
-#endif
-
-	gprs_status = GPRS_IDLE;
-	gprs_prev_status = GPRS_APN_READY;
-} // GPRS AT NETWORK UP
-
-/* GPRS_AT_GET_IP: Send at command to ask for local ip address.
- * 				   This step is mandatory.
- */
-void gprs_at_get_ip(void) {
-	char *at_cmd = "AT+CIFSR\r";
-
-#if defined(SUPPORT_SLEEP)
-	uart_write_buffer(fd_gprs, "a\r", 2);
-	usleep(T_100MS);
-#endif
-
-	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-#ifdef GPRS_DEBUG
-	printf("%s\n", at_cmd);
-	if (result < 0) {
-		printf("GPRS: Error enviando comando AT+CIFSR\n");
-	}
-	fflush(stdout);
-#endif
-
-	gprs_status = GPRS_IDLE;
-	gprs_prev_status = GPRS_NETWORK_UP;
-} // GPRS AT GET IP END
-
-/* GPRS_AT_OPEN_TCP_CON: Opens a tcp connection to ip:port */
-void gprs_at_open_tcp_con(char *ip, unsigned int port) {
-	char at_cmd[255];
-
-#if defined(SUPPORT_SLEEP)
-	uart_write_buffer(fd_gprs, "a\r", 2);
-	usleep(T_100MS);
-#endif
-
-	bzero(&at_cmd, 255);
-	sprintf(at_cmd, "AT+CIPSTART=\"TCP\",\"%s\",\"%d\"\r", ip, port);
-
-	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-#ifdef GPRS_DEBUG
-	printf("%s\n", at_cmd);
-	if (result < 0) {
-		printf("GPRS: Error enviando comando AT+CIPSTART\n");
-	}
-	fflush(stdout);
-#endif
-
-	gprs_status = GPRS_TCP_CONNECTING;
-} // GPRS AT OPEN TCP CON END
-
-/* GPRS_AT_SHUT: Send at command to recover from +PDP: DEACT"
- * 				 Change status to GPRS_NETWORK_OK and activate config mode
- */
-void gprs_at_shut(void) {
-	char *at_cmd = "AT+CIPSHUT\r";
-
-#if defined(SUPPORT_SLEEP)
-	uart_write_buffer(fd_gprs, "a\r", 2);
-	usleep(T_100MS);
-#endif
-
-	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-#ifdef GPRS_DEBUG
-	printf("%s\n", at_cmd);
-	if (result < 0) {
-		printf("GPRS: Error enviando comando AT+CIPSHUT\n");
-	}
-	fflush(stdout);
-#endif
-
-	gprs_prev_status = gprs_status;
-	gprs_status = GPRS_IDLE;
-} // GPRS AT SHUT END
-
-/* GPRS_AT_CLOSE_CON: Closes tcp connection via gprs */
-void gprs_at_close_con(void) {
-	char *at_cmd = "AT+CIPCLOSE\r";
-
-#if defined(SUPPORT_SLEEP)
-	uart_write_buffer(fd_gprs, "a\r", 2);
-	usleep(T_100MS);
-#endif
-
-	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-#ifdef GPRS_DEBUG
-	printf("%s\n", at_cmd);
-	if (result < 0) {
-		printf("GPRS: Error enviando comando AT+CIPCLOSE\n");
-	}
-	fflush(stdout);
-#endif
-
-	//gprs_status = GPRS_IP_OK; //Updated when received "close ok"
-} // GPRS AT CLOSE CON END
-
-/* GPRS_GET_STATUS: Returns GPRS status in internal state machine */
-unsigned short gprs_get_status(void) {
-	return gprs_status;
-} // GPRS GET STATUS END
-
-/* GPS_POWER_ON: Send at command to turn on gps module.
- * 				 If auto = 1, turn on automatic report  */
-void gps_power_on(int auto_report) {
-	char *at_cmd = "AT+CGNSPWR=1\r";
-	char *at_cmd_auto = "AT+CGNSURC=5\r"; //Report every 5 seconds
-	char *at_cmd_manual = "AT+CGNSURC=0\r"; //Just report under request
-
-#if defined(SUPPORT_SLEEP)
-	uart_write_buffer(fd_gprs, "a\r", 2);
-	usleep(T_100MS);
-#endif
-
-	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-#ifdef GPRS_DEBUG
-	printf("%s\n", at_cmd);
-	if (result < 0) {
-		printf("GPRS: Error enviando comando AT+CGNSPWR\n");
-	}
-	fflush(stdout);
-#endif
-
-	usleep(T_100MS);
-
-	if (auto_report) {
-		result = uart_write_buffer(fd_gprs, at_cmd_auto, strlen(at_cmd_auto));
-	} else {
-		result = uart_write_buffer(fd_gprs, at_cmd_manual,
-				strlen(at_cmd_manual));
-	}
-
-#ifdef GPRS_DEBUG
-	if (result < 0) {
-		printf("GPRS: Error enviando comando AT+CGNSURC\n");
-		fflush(stdout);
-	}
-#endif
-
-	gps_status = GPS_NO_COVERAGE;
-} // GPS POWER ON END
-
-/* GPS_POWER_OFF: Send at command to turn off gps module */
-void gps_power_off(void) {
-	char *at_cmd = "AT+CGNSPWR=0\r";
-
-#if defined(SUPPORT_SLEEP)
-	uart_write_buffer(fd_gprs, "a\r", 2);
-	usleep(T_100MS);
-#endif
-
-	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-#ifdef GPRS_DEBUG
-	printf("%s\n", at_cmd);
-	if (result < 0) {
-		printf("GPRS: Error enviando comando AT+CGNSPWR\n");
-	}
-	fflush(stdout);
-#endif
-
-	gps_status = GPS_OFF;
-} //GPS POWER OFF END
-
-/* GPS_AT_GET_DATA: Send at command requesting gps real time information */
-void gps_at_get_data(void) {
-	char *at_cmd = "AT+CGNSINF\r";
-
-#if defined(SUPPORT_SLEEP)
-	uart_write_buffer(fd_gprs, "a\r", 2);
-	usleep(T_100MS);
-#endif
-
-	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-#ifdef GPRS_DEBUG
-	printf("%s\n", at_cmd);
-	if (result < 0) {
-		printf("GPRS: Error enviando comando AT+CGNSINF\n");
-	}
-	fflush(stdout);
-#endif
-} // GPS AT GET DATA
-
-void append(char *s, char c) {
-	int len = strlen(s);
-	s[len] = c;
-	s[len + 1] = '\0';
-}
-
-/* GPS_AT_SEND_DATA: Send data to mobile */
-//void gps_at_send_data(char *epc) {
-//
-//	char gprs_msg[255];
-//	bzero(&gprs_msg, sizeof(gprs_msg));
-//
-//	char *at_cmd = "AT+CMGF=1\r";
-//	printf("%s\n", at_cmd);
-//	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-//
-//	sleep(1);
-//
-//	gprs_process_msg();
-//
-//	while(!recibidoOK){
-//	}
-//
-//	sleep(1);
-//
-//	at_cmd = "AT+CMGS=\"+34649103025\"\r";
-//	printf("%s\n", at_cmd);
-//	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-//
-//	gprs_process_msg();
-//
-//	sleep(2);
-//
-//	at_cmd = epc;
-//	printf("%s\n", at_cmd);
-//	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-//
-//	at_cmd = "\x1a";
-//	printf("%s\n", at_cmd);
-//	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-//
-//} // GPS AT GET DATA
 
 /* GPS_AT_SEND_DATA: Send data to mobile */
 //void gps_at_send_data(char *epc, struct datosBD *dBD) {
@@ -965,6 +339,7 @@ void gps_at_send_data(char *epc[], int numTuplas) {
 	while (!recibidoOK) {
 		printf("ESPERANDO OK");
 	}
+	recibidoOK = 0;
 
 	sleep(1);
 
@@ -1002,247 +377,18 @@ void gps_at_send_data(char *epc[], int numTuplas) {
 
 } // GPS AT GET DATA
 
-/* GPS_GET_LATITUDE: Returns gps latitude, previously obtained from gps */
-t_position gps_get_latitude(void) {
-	return latitude;
-} // GPS GET LATITUDE END
+void send_msg(char* message)
+{
+	char msg[10];
 
-/* GPS_GET_LONGITUDE: Returns gps longitude, previously obtained from gps */
-t_position gps_get_longitude(void) {
-	return longitude;
-} // GPS GET LONGITUDE END
-
-/* GPS_GET_STATUS: Return curreng gps status */
-unsigned short gps_get_status(void) {
-	return gps_status;
-} // GPS GET STATUS END
-
-/* GPRS_GET_CONFIG: Return 1 if gprs is in config mode, 0 otherwise. */
-int gprs_get_config(void) {
-	return gprs_configure;
-} // GPRS GET CONFIG END
-
-/* GPRS_SET_CONFIG: Put GPRS in config mode.
- * 					Configuration must be activated in gprs_at_full_functionality
- */
-//void gprs_set_config(void){
-//	gprs_configure = 1;
-//} // GPRS SET CONFIG END
-
-/* GPRS_CHECK_ERROR: Return one if critical error. In that case recommendation is to use any other network interface */
-int gprs_check_error(void) {
-	if (gprs_status == GPRS_ERROR) {
-		return 1;
-	} else {
-		return 0;
+	//read_tcp_message(msg);
+	while(strncmp(msg, "RECIBIDO", 8) == 0){
+		send_tcp_message(message);
+		read_tcp_message(msg);
 	}
-} // GPRS CHECK ERROR END
+}
 
-/* GPRS_SEND_POSITION: Send message to server with position */
-int gprs_send_position(t_position lat, t_position lon) {
-	//Check if frame buffer is full
-	if (gprs_buffer_full) {
-#ifdef GPRS_DEBUG
-		printf("gprs_send error: Buffer full\n");
-		fflush(stdout);
-#endif
-		gprs_status = GPRS_ERROR;
-		gprs_configure = 0;
-		idx_input = idx_output;
-		return (-1);
-	}
-
-	//Check status
-	if (gprs_status < GPRS_IP_OK) {
-#ifdef GPRS_DEBUG
-		printf("gprs_send error: gprs connection missconfigured\n");
-		fflush(stdout);
-#endif
-		gprs_status = GPRS_ERROR;
-		gprs_configure = 0;
-		idx_input = idx_output;
-		return (-1);
-	}
-
-	//Prepare frame
-	bzero(&frame_buffer[idx_input].data, GPRS_MAX_FRAME_SIZE);
-
-	//Make message
-	frame_buffer[idx_input].data[0] = '#';
-
-	//Latitude
-	frame_buffer[idx_input].data[1] = lat.byte[0];
-	frame_buffer[idx_input].data[2] = lat.byte[1];
-	frame_buffer[idx_input].data[3] = lat.byte[2];
-	frame_buffer[idx_input].data[4] = lat.byte[3];
-
-	//Longitude
-	frame_buffer[idx_input].data[5] = lon.byte[0];
-	frame_buffer[idx_input].data[6] = lon.byte[1];
-	frame_buffer[idx_input].data[7] = lon.byte[2];
-	frame_buffer[idx_input].data[8] = lon.byte[3];
-
-	//Checksum
-	frame_buffer[idx_input].data[9] = gprs_checksum(
-			(unsigned char *) frame_buffer[idx_input].data, 9);
-
-	//Message len
-	frame_buffer[idx_input].len = 9 + 1;
-
-	//Update idx_input
-	idx_input = (idx_input + 1) % GPRS_FRAME_BUFFER_SIZE;
-	if (idx_input == idx_output)
-		gprs_buffer_full = 1;
-
-	//State machine
-	switch (gprs_status) {
-	case GPRS_IP_OK:
-//Try tcp connection
-		gprs_at_open_tcp_con(GPRS_SERVER_IP, GPRS_SERVER_PORT);
-		gprs_status = GPRS_TCP_CONNECTING;
-		gprs_send_mal = 0;
-		break;
-	case GPRS_TCP_CONNECTING:
-	case GPRS_TCP_READY:
-//Do nothing. Messages will be sent when we receive answer to connect or previous send commands
-		break;
-	default:
-//Error. Something was wrong.
-#ifdef GPRS_DEBUG
-		printf("gprs_send error: unexpected status in state machine -> %d\n",
-				gprs_status);
-		fflush(stdout);
-#endif
-		gprs_status = GPRS_ERROR;
-		gprs_configure = 0;
-		idx_input = idx_output;
-		return (-1);
-		break;
-	}
-
-	return 0;
-
-} //GPRS_SEND_POSITION END
-
-/* GPRS_CHECKSUM: Calculate checksum to be added at the end of a frame. Add bytes and apply 2-complement. */
-unsigned char gprs_checksum(unsigned char *data, short len) {
-	char result = 0;
-	short i = 0;
-
-	for (i = 0; i < len; i++) {
-		result += data[i];
-	}
-
-	//Two - complement
-	result = ~result;
-	result++;
-
-	return result;
-} // GPRS CHECKSUM END
-
-/* IS_IP_V4: Returns 1 if input string is a well formated ip. Otherwise returns 0 */
-int gprs_is_ip_v4(char* ip) {
-	int num;
-	int flag = 1;
-
-	//Check length
-	if ((strlen(ip) > 15) || (strlen(ip) < 7)) {
-		return 0;
-	}
-
-	int counter = 0;
-	char* p = strtok(ip, ".");
-
-	while (p && flag) {
-		num = atoi(p);
-
-		if ((num >= 0) && (num <= 255) && (counter++ < 4)) {
-			flag = 1;
-			p = strtok(NULL, ".");
-		} else {
-			flag = 0;
-			break;
-		}
-	}
-
-	return flag && (counter == 4);
-} // IS IP V4 END
-
-/* GPRS_SEND_FRAME_IN_BUFFER: If there are messages in the gprs buffer to be sent, take the first one in the queue, and send it. */
-void gprs_send_frame_in_buffer(void) {
-	char at_cmd[255];
-
-	if ((gprs_status != GPRS_TCP_READY) || (idx_input == idx_output)) {
-		printf("Send frame in buffer error: Wrong gprs status %d\n",
-				gprs_status);
-		fflush(stdout);
-		gprs_status = GPRS_ERROR;
-		gprs_configure = 0;
-		idx_input = idx_output;
-		return;
-	}
-
-#if defined(SUPPORT_SLEEP)
-	uart_write_buffer(fd_gprs, "a\r", 2);
-	usleep(T_100MS);
-#endif
-
-	bzero(&at_cmd, 255);
-	sprintf(at_cmd, "AT+CIPSEND=%d\r", frame_buffer[idx_output].len);
-
-	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
-	if (result < 0) {
-#ifdef GPRS_DEBUG
-		printf("GPRS: Error enviando comando AT+CIPSEND\n");
-		fflush(stdout);
-#endif
-//Error in gprs
-		if (gprs_critical_errors <= GPRS_CRITICAL_ERROR_LIMIT)
-			gprs_critical_errors++;
-		if (gprs_critical_errors <= GPRS_CRITICAL_ERROR_LIMIT) {
-			gprs_status = GPRS_ERROR;
-			gprs_configure = 0;
-			idx_input = idx_output;
-		}
-		return;
-	}
-	//Wait for prompt
-	usleep(T_100MS);
-
-	//Send first message in buffer
-
-	result = uart_write_buffer(fd_gprs, frame_buffer[idx_output].data,
-			frame_buffer[idx_output].len);
-
-	if (result < 0) {
-#ifdef GPRS_DEBUG
-		printf("Send frame in buffer error:\n");
-		int i = 0;
-		for (i = 0; i < frame_buffer[idx_output].len; i++) {
-			printf("%02x ", frame_buffer[idx_output].data[i]);
-		}
-		printf("\n");
-		fflush(stdout);
-#endif
-//Error in gprs
-		if (gprs_critical_errors <= GPRS_CRITICAL_ERROR_LIMIT)
-			gprs_critical_errors++;
-		if (gprs_critical_errors <= GPRS_CRITICAL_ERROR_LIMIT) {
-			gprs_status = GPRS_ERROR;
-			gprs_configure = 0;
-			idx_input = idx_output;
-		}
-		return;
-	}
-
-	//Update buffer index
-	//NOTE: Output index will be updated when received send_ok
-	//idx_output = (idx_output+1) % GPRS_FRAME_BUFFER_SIZE;
-
-} // GPRS SEND FRAME IN BUFFER END
-
-void gprs_get_network(void){
+void gprs_get_network(char* message){
 
 	char gprs_msg[26];
 	int i = 0;
@@ -1255,18 +401,27 @@ void gprs_get_network(void){
 	char *at_cmd = "AT+COPS=?\r";
 	printf("%s\n", at_cmd);
 	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-	gprs_process_msg();
+	while(notCops == 0) {
+		//printf("Processing\n");
+		gprs_process_msg();
+		
+	}
+	
 }
 
 void gprs_set_network(char* network){
  
 	char gprs_msg[26];
 	int i = 0;
-
+	printf("SET NETWORK\n"); 
 	char *at_cmd = "AT+COPS=\r";
-	sprintf(gprs_msg, "AT+COPS=4,2,\"%s\"\r", network);
-	printf("%s\n", at_cmd); 
+	sprintf(gprs_msg, "AT+COPS=4,2,%s\r", network);
+	printf("%s\n", gprs_msg); 
 	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+	while (!recibidoOK) {
+		gprs_process_msg();
+	}
+	
 }
 
 void gprs_send_SMS(char* number, char* text){
@@ -1277,13 +432,12 @@ void gprs_send_SMS(char* number, char* text){
 	char *at_cmd = "AT+CMGF=1\r";
 	printf("%s\n", at_cmd);
 	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-
 	sleep(1);
 
 	gprs_process_msg();
 
 	while (!recibidoOK) {
-		printf("ESPERANDO OK\r\n");
+		gprs_process_msg();
 	}
 
 	printf("ESPERANDO\r\n");
@@ -1302,6 +456,7 @@ void gprs_send_SMS(char* number, char* text){
 
 	//sleep(2);
 	sprintf(gprs_msg, "%s\r", text);
+	printf("%s\n", gprs_msg);
 	result = uart_write_buffer(fd_gprs, gprs_msg, strlen(gprs_msg));
 
 	at_cmd = "\x1a";
