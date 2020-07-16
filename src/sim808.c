@@ -25,6 +25,9 @@ int gprs_configure; //1 if we enter into configuration mode
 int fd_gprs; //File descriptor for gprs UART
 char gprs_imei[17];
 char gps_utc_time[19];
+char longitud[10];
+char latitud[10];
+char latylong[20];
 
 // =======================================================================
 //
@@ -50,6 +53,7 @@ int idx_output;
 int recibidoOK = 0;
 int recibidoEscribe = 0;
 int notCops = 0;
+static int coordenadas = 0;
 
 // =======================================================================
 //
@@ -77,7 +81,7 @@ int gprs_init(void) {
 	longitude.dato = 0;
 
 	//Export and configure gpio for RESET pin
-	if (gpio_config(SRES, GPIO_OUTPUT) < 0) {
+	/*if (gpio_config(SRES, GPIO_OUTPUT) < 0) {
 		printf("Error configuring RESET pin for SIM808\n");
 		fflush(stdout);
 		return (-1);
@@ -91,7 +95,7 @@ int gprs_init(void) {
 		printf("Error configuring PWRKEY pin for SIM808\n");
 		fflush(stdout);
 		return (-1);
-	}
+	}*/
 
 	//Turn on module
 	//gpio_write(POWERKEY,0);
@@ -134,8 +138,8 @@ void gprs_close(void) {
 void gprs_process_msg(void) {
 	char gprs_msg[255];
 	char separators[4] = "\r\n";
-	char separators2[6] = ",:\r\n";
-	char separators3[9] = "+,:()\"\r\n";
+	char separators2[6] = " ,:\r\n";
+	char separators3[9] = " +,:()\"\r\n";
 	//char separators3[9] = "()";
 	char *temp;
 	//char temp2[128];
@@ -198,25 +202,53 @@ void gprs_process_msg(void) {
 			} else if (strncmp("OK", temp, 2) == 0) {
 
 				recibidoOK = 1;
-				printf("recibido ok\n");
+				//printf("recibido ok\n");
 			
 			} else if ((strncmp("+CGNSINF:", temp, 9) == 0)
 					|| (strncmp("+UGNSINF:", temp, 9) == 0)) {
 				//Format: +CGNSINF: <GNSSS run status>, <fix status>, <UTC Date & time>, <latitude>, <longitude> .....
 				temp3 = strtok(temp, separators2); //+CGNSINF
+				printf("Token: %s\n", temp3);
 				temp3 = strtok(NULL, separators2); //run status
-				if (temp3[0] == '1') {
+				printf("Token: %s\n", temp3);
+/*
+				if(temp3 != NULL){
+					 while(temp3 != NULL){
+					 	//strcpy(cops[i], temp3);
+					 	printf("Token: %s\n", temp3);
+            			temp3 = strtok(NULL, separators2);
+            		
+            		}
+				}
+*/
+				//sprintf(msg, "%s", temp3[0]);
+				//printf("Token: %s\n", msg);
+				if (strcmp(temp3, "1") == 0) {
+				//if (temp3 == '1') {
 					temp3 = strtok(NULL, separators2); //fix status
-					if (temp3[0] == '1') {
+					printf("Token: %s\n", temp3);
+					if (strcmp(temp3, "1")  == 0) {
+					//if (temp3 == '1') {
 						//Get date and position
 						gps_status = GPS_OK;
 						temp3 = strtok(NULL, separators2); //utc date & time
 						bzero(&gps_utc_time, sizeof(gps_utc_time));
 						strncpy(gps_utc_time, temp3, 18);
+						printf("GPS time: %s\n", gps_utc_time);
 						temp3 = strtok(NULL, separators2); //latitude
 						latitude.dato = atof(temp3);
+						//printf("GPS latitude: %s\n", temp3);
+						strcpy(latitud, temp3);
+						printf("GPS latitude: %s\n", latitud);
 						temp3 = strtok(NULL, separators2); //longitude
 						longitude.dato = atof(temp3);
+						//printf("GPS longitude: %s\n", temp3);
+						strcpy(longitud, temp3);
+						printf("GPS longitude: %s\n", longitud);
+						sprintf(latylong, "%s %s\n", latitud, longitud);
+						//printf("GPS lon y lat: %s\n", msg);
+						//send_tcp_message(msg);
+						coordenadas = 1;
 					} else {
 						gps_status = GPS_NO_COVERAGE;
 					}
@@ -464,4 +496,32 @@ void gprs_send_SMS(char* number, char* text){
 	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
 }
 
+void gps_init(){
+
+	char *at_cmd = "AT+CGNSPWR=1\r";
+	printf("%s\n", at_cmd);
+	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+//	gprs_process_msg();
+
+}
+
+void gps_get_location(){
+
+	char *at_cmd = "AT+CGNSINF\r";
+	printf("%s\n", at_cmd);
+	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+	gprs_process_msg();
+}
+
+char* gps_send_location_spi() {
+
+	printf("LAT Y LON: %s %s\n", latitud, longitud);
+	return latylong;
+
+}
+
+void gps_send_location_web() {
+	printf("LAT Y LON: %s %s\n", latitud, longitud);
+
+}
 

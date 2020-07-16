@@ -27,6 +27,12 @@ static unsigned short mode = 0; //Default mode
 static unsigned short bits = 8; //Default bits per word
 //static unsigned int speed = 5000000;
 
+static uint16_t delay;
+static int verbose;
+//static uint32_t speed = 115200;
+
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+
 /*! ------------------------------------------------------------------------------------------------------------------
  * Function: openspi()
  *
@@ -91,97 +97,6 @@ int closespi(void) {
 
 } // end closespi()
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * Function: writetospi()
- *
- * Low level abstract function to write to the SPI
- * Takes two separate byte buffers for write header and write data
- * returns 0 for success, or -1 for error
- */
-int writetospi(unsigned short headerLength, const unsigned char *headerBuffer,
-		unsigned int bodylength, const unsigned char *bodyBuffer) {
-
-	int ret = 0;
-
-	struct spi_ioc_transfer tr[2] = { { 0 }, };
-
-	memset(&tr, 0, sizeof(tr));
-
-	//header tx buffer
-	tr[0].tx_buf = (unsigned long) headerBuffer;
-	tr[0].rx_buf = (unsigned long) NULL;
-	tr[0].len = headerLength;
-//    tr[0].cs_change = 0;
-
-	//body tx buffer
-	tr[1].tx_buf = (unsigned long) bodyBuffer;
-	tr[1].rx_buf = (unsigned long) NULL;
-	tr[1].len = bodylength;
-
-//	Send header and body
-	ret = ioctl(spi_descriptor, SPI_IOC_MESSAGE(2), &tr);
-//    ret = write(spi_descriptor, headerBuffer, headerLength);
-	// printf("Ret: %u\n ", ret);
-
-	if (ret < 1)
-		return (-1);
-
-	return 0;
-} // end writetospi()
-
-/*! ------------------------------------------------------------------------------------------------------------------
- * Function: readfromspi()
- *
- * Low level abstract function to read from the SPI
- * Takes two separate byte buffers for write header and read data
- * returns the offset into read buffer where first byte of read data may be found,
- * or returns -1 if there was an error
- */
-int readfromspi(unsigned short headerLength, const unsigned char *headerBuffer,
-		unsigned int readlength, unsigned char *readBuffer) {
-
-	int ret = 0;
-
-//	unsigned char *bp;
-//	int len;
-
-	struct spi_ioc_transfer tr[2] = { { 0 }, };
-
-	memset(&tr, 0, sizeof(tr));
-
-	//header tx buffer
-	tr[0].tx_buf = (unsigned long) headerBuffer;
-	//tr[0].rx_buf = (unsigned long) NULL;
-	tr[0].len = headerLength;
-
-	//Receive buffer
-	//tr[1].tx_buf = (unsigned long) NULL;
-	tr[1].rx_buf = (unsigned long) readBuffer;
-	tr[1].len = readlength;
-//    tr[1].cs_change = 1;
-
-	ret = ioctl(spi_descriptor, SPI_IOC_MESSAGE(2), &tr);
-//    ret = read(spi_descriptor, readBuffer, readlength);
-
-//
-	if (ret < 0)
-	{
-		perror("SPI_IOC_MESSAGE");
-	}
-
-	return 0;
-} // end readfromspi()
-
-static uint16_t delay;
-static int verbose;
-static uint32_t speed = 115200;
-
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-
-static void pabort(const char *s) {
-	perror(s);
-	abort();
-}
 
 static void hex_dump(const void *src, size_t length, size_t line_size,
 		char *prefix) {
@@ -192,7 +107,7 @@ static void hex_dump(const void *src, size_t length, size_t line_size,
 
 	printf("%s | ", prefix);
 	while (length-- > 0) {
-//		printf("%02X ", *address++);
+		printf("%02X ", *address++);
 		if (!(++i % line_size) || (length == 0 && i % line_size)) {
 			while (line < address) {
 				c = *line++;
@@ -205,32 +120,61 @@ static void hex_dump(const void *src, size_t length, size_t line_size,
 	}
 }
 
-void transfer(uint8_t const *tx, uint8_t const *rx, size_t len) {
-	int ret;
+static void pabort(const char *s) {
+	perror(s);
+	abort();
+}
 
-	struct spi_ioc_transfer tr = { .tx_buf = (unsigned long) tx, .rx_buf =
-			(unsigned long) rx, .len = len, .delay_usecs = delay, .speed_hz =
-			speed, .bits_per_word = bits, };
+void transfer(uint8_t const *tx, size_t lenTx, uint8_t const *rx, size_t lenRx) {
 
-	if (mode & SPI_TX_QUAD)
-		tr.tx_nbits = 4;
-	else if (mode & SPI_TX_DUAL)
-		tr.tx_nbits = 2;
-	if (mode & SPI_RX_QUAD)
-		tr.rx_nbits = 4;
-	else if (mode & SPI_RX_DUAL)
-		tr.rx_nbits = 2;
-	if (!(mode & SPI_LOOP)) {
-		if (mode & (SPI_TX_QUAD | SPI_TX_DUAL))
-			tr.rx_buf = 0;
-		else if (mode & (SPI_RX_QUAD | SPI_RX_DUAL))
-			tr.tx_buf = 0;
+	struct spi_ioc_transfer	xfer[2];
+	unsigned char		buf[32], *bp;
+	int			status;
+
+	//printf("do msg\n");
+
+	memset(xfer, 0, sizeof xfer);
+
+	xfer[0].tx_buf = (unsigned long)tx;
+	xfer[0].len = lenTx;
+
+	xfer[1].rx_buf = (unsigned long) rx;
+	xfer[1].len = lenRx;
+
+	status = ioctl(spi_descriptor, SPI_IOC_MESSAGE(2), xfer);
+	if (status < 0) {
+		perror("SPI_IOC_MESSAGE");
+		return;
+	}
+}
+
+
+void readSPI(uint8_t const *tx, size_t lenTx, uint8_t const *rx, size_t lenRx)
+{
+
+	struct spi_ioc_transfer	xfer[2];
+	unsigned char		buf[32], *bp;
+	int			status;
+
+	//printf("do msg\n");
+
+	memset(xfer, 0, sizeof xfer);
+
+	xfer[0].tx_buf = (unsigned long)tx;
+	xfer[0].len = lenTx;
+
+	xfer[1].rx_buf = (unsigned long) rx;
+	xfer[1].len = lenRx;
+
+	status = ioctl(spi_descriptor, SPI_IOC_MESSAGE(2), xfer);
+	if (status < 0) {
+		perror("SPI_IOC_MESSAGE");
+		return;
 	}
 
-	ret = ioctl(spi_descriptor, SPI_IOC_MESSAGE(1), &tr);
-	if (ret < 1)
-		pabort("can't send spi message");
-
-	if (verbose)
-		hex_dump(tx, len, 32, "TX");
+	printf("response(%2d, %2d): ", lenRx, status);
+	for (bp = rx; lenRx; lenRx--)
+		printf(" %c", *bp++);
+	printf("\n"); 
+	hex_dump(buf, lenRx, 32, "RX");
 }

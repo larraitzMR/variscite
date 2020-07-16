@@ -17,7 +17,7 @@
 // =======================================================================
 
 int fd_stmf4; //File descriptor for gprs UART
-static const char *device = "/dev/spidev0.0";
+static const char *device = "/dev/spidev2.0";
 
 int main(void) {
 
@@ -35,9 +35,11 @@ int main(void) {
         while(1) {
                 transfer("LARRAITZ", 8, 0, 0);
                 sleep(2);
-                readSPI(0,0, buffRX,5);
+                readSPI(0,0, buffRX,8);
 //              printf("Buff: %s\n", buffRX);
                 sleep(2);
+                memset(buffRX, 0, sizeof(buffRX));
+
 
         }
 }

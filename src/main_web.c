@@ -103,6 +103,9 @@ int main(void) {
 			char* telf = strtok(NULL, " ");	
 			char* text = strtok(NULL, " ");
 			gprs_send_SMS(telf, text);
+		} else if (strncmp(msg, "DISCONNECT", 10) == 0) {
+			gprs_close();
+			close(gprs_fd);
 		}
 
 	}
