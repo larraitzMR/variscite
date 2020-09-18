@@ -247,7 +247,7 @@ void gprs_process_msg(void) {
 						printf("GPS longitude: %s\n", longitud);
 						sprintf(latylong, "%s %s\n", latitud, longitud);
 						//printf("GPS lon y lat: %s\n", msg);
-						//send_tcp_message(msg);
+						//send_tcp_message(latylong);
 						coordenadas = 1;
 					} else {
 						gps_status = GPS_NO_COVERAGE;
@@ -501,7 +501,7 @@ void gps_init(){
 	char *at_cmd = "AT+CGNSPWR=1\r";
 	printf("%s\n", at_cmd);
 	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
-//	gprs_process_msg();
+	gprs_process_msg();
 
 }
 
@@ -513,15 +513,66 @@ void gps_get_location(){
 	gprs_process_msg();
 }
 
-char* gps_send_location_spi() {
-
+char* gps_send_location() {
+	char *at_cmd = "AT+CGNSINF\r";
+	printf("%s\n", at_cmd);
+	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+	gprs_process_msg();
 	printf("LAT Y LON: %s %s\n", latitud, longitud);
+	send_tcp_message(latylong);
 	return latylong;
 
 }
 
-void gps_send_location_web() {
-	printf("LAT Y LON: %s %s\n", latitud, longitud);
+void gprs_set_configuration(){
+	printf("SET CONFIGURATION");
+	char *at_cmd = "AT+CGDCONT=1,\"IP\",\"NXT17.NET\"\r";
+	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+	gprs_process_msg();
+	at_cmd = "AT+CGACT=1,1\r";
+	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+	gprs_process_msg();
+	at_cmd = "AT+SAPBR=3,1,\"Contype\",\"GPRS\"\r";
+	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+	gprs_process_msg();
+	at_cmd = "AT+SAPBR=3,1,\"APN\",\"NXT17.NET\"\r";
+	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+	gprs_process_msg();
+	at_cmd = "AT+SAPBR=1,1\r";
+	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+	gprs_process_msg();
+	at_cmd = "AT+SAPBR=2,1\r";
+	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+	gprs_process_msg();
+	at_cmd = "AT+SAPBR=0,1\r";
+	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+	gprs_process_msg();
+}
 
+void gprs_send_http(char *EPC, int size){
+	char *at_cmd = "AT+HTTPINIT\r";
+	int result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+	gprs_process_msg();
+	at_cmd = "AT+HTTPPARA=\"CID\",1\r";
+	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+	gprs_process_msg();
+	at_cmd = "AT+HTTPPARA=\"URL\",\"www.pruebas.myruns.com\"\r";
+	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+	gprs_process_msg();
+	at_cmd = "AT+HTTPPARA=\"CONTENT\",\"application/x-www-form-urlencoded\"\r";
+	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+	gprs_process_msg();
+	sprintf(at_cmd,"AT+HTTPDATA=%s,%s", size, 20000);
+	printf(at_cmd);
+	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+	sprintf(at_cmd,"parametro=%s", EPC);
+	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+	gprs_process_msg();
+	at_cmd = "AT+HTTPACTION=1\r";
+	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+	gprs_process_msg();
+	at_cmd = "AT+HTTPTERM=1\r";
+	result = uart_write_buffer(fd_gprs, at_cmd, strlen(at_cmd));
+	gprs_process_msg();
 }
 

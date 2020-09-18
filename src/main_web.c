@@ -42,74 +42,79 @@
 
 int main(void) {
 
-	int gprs_fd;
+	int lora_fd;
+	int fd_stmf4; //File descriptor for gprs UART
+	static const char *device = "/dev/spidev2.0";
 
-	int n = 0;
-	char msg[50];
-	char* network;
-	char net[20];
+	char msg[200];
+	char buffRX[100];
 
-	//Init GPRS
-	int fd_sim808 = 0;
-	int result = 0;
-	fd_set rfds;
-	struct timeval tv;
-
-	printf("Probando GPRS: \n");
-	printf("============== \n");
-	fflush(stdout);
-
-	//Iniciamos gprs
-	fd_sim808 = gprs_init();
-	if (fd_sim808 <= 0) {
-		printf("Error arrancando gprs\n");
-		fflush(stdout);
-		return (-1);
+    //Configure SPUI
+	fd_stmf4 = openspi(device, 115200);
+	if (fd_stmf4 < 0) {
+	        printf("Error configuring SPI for variscite\n");
+	        fflush(stdout);
+	        return (-1);
 	}
-	printf("fd_sim808: %d\n", fd_sim808);
-	fflush(stdout);
-	
-	gprs_fd = create_tcp_conection(5554) ;
 
-	//send_tcp_message("CONNECTED");
-	
+	lora_fd = create_tcp_conection(5554) ;
+
+	int isNodo = 0;
+
 
 	while(1){
 	   	read_tcp_message(msg);
-	    if (strncmp(msg, "GET_NETWORK", 11) == 0) {
-			printf("msg: %s\n", msg);
-			//send_tcp_message("Mensaje TCP");
-			gprs_get_network();
+	    if (strncmp(msg, "SET_MODE", 8) == 0) {
+			//printf("msg: %s\n", msg);
+			char* mens = strtok(msg, " ");
+			char* mode = strtok(NULL, " ");
+			if(strncmp(mode, "NODO",4) == 0){
+				printf("is NODO\n");
+				isNodo = 1;
+			}  else {
+				printf("is GATEWAY\n");
+				isNodo = 0;
+			}
+			transfer(mode, 8, 0, 0);
 		}
-		else if (strncmp(msg, "SET_NETWORK", 11) == 0) {
-			printf("msg: %s\n", msg);
-			int longitud = strlen(msg) - 11;
-			char *nuevo = (char*) malloc(sizeof(char) * (longitud + 1));
-			nuevo[longitud] = '\0';
-			strncpy(nuevo, msg + 12, longitud);
-			printf(" : %s\n", nuevo);
-			gprs_set_network(nuevo);
-
+		if (isNodo == 0) { //Es gateway
+			transfer(0,0,buffRX, sizeof(buffRX));
+		} else {
+			transfer("E28011606000020D0EC820DE", 24, 0, 0);
+			sleep(2);
+	        memset(buffRX, 0, sizeof(buffRX));
 		}
-		else if (strncmp(msg, "SEND_SMS", 8) == 0) {
 
+		/*
+		} else if (strncmp(msg, "GATEWAY", 7) == 0) {
+			//intercambio de datos entre el ST y variscite
 			printf("msg: %s\n", msg);
 			char* mens = strtok(msg, " ");
-			/*int longitud = strlen(msg) - 8;
-			char *nuevo = (char*) malloc(sizeof(char) * (longitud + 1));
-			nuevo[longitud] = '\0';
-			strncpy(nuevo, msg + 8, longitud);
-			printf(" : %s\n", nuevo);*/
-			char* telf = strtok(NULL, " ");	
-			char* text = strtok(NULL, " ");
-			gprs_send_SMS(telf, text);
+			char* epc = strtok(NULL, " ");
+			transfer("E28011606000020D0EC820DE", 24, 0, 0);
+			//transfer(epc, 20, 0, 0);
+	        sleep(2);
+	        readSPI(0,0, buffRX,20);
+	        sleep(2);
+	        memset(buffRX, 0, sizeof(buffRX));
+
+		} else if (strncmp(msg, "NODO", 4) == 0) {
+			//mandarle las EPCs al ST para que este las mande. Sin intercambio de datos
+			printf("msg: %s\n", msg);
+			char* mens = strtok(msg, " ");
+			char* epc = strtok(NULL, " ");
+			transfer("E28011606000020D0EC820DE", 24, 0, 0);
+//			transfer(epc, 500, 0, 0);
+	        sleep(2);
+	        memset(buffRX, 0, sizeof(buffRX));
+
 		} else if (strncmp(msg, "DISCONNECT", 10) == 0) {
-			gprs_close();
-			close(gprs_fd);
-		}
+			close(lora_fd);
+		}*/
 
 	}
 	fflush(stdout);
+	memset(msg, 0, sizeof(msg));
 
 	return EXIT_SUCCESS;
 

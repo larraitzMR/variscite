@@ -20,8 +20,8 @@
 //#define PIN_REQUIRED
 //#define SUPPORT_SLEEP
 
-//#define UART_GPRS 		"/dev/ttymxc2"
-#define UART_GPRS 			"/dev/ttyUSB0"
+#define UART_GPRS 		    "/dev/ttymxc2"
+//#define UART_GPRS 			"/dev/ttyUSB0"
 //#define GPRS_APN_NAME		"internet.easym2m.eu"
 #define GPRS_APN_NAME		"tuenti.com"
 //#define GPRS_APN_NAME		"NXT17.NET"

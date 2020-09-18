@@ -89,8 +89,6 @@ int create_tcp_conection(int portNum) {
 	} else {
 		printf("Cliente recibido\n");
 	}
-
-
 	return server;
 }
 
@@ -103,8 +101,6 @@ void send_tcp_message(char *data){
 	  perror(NULL);
 	  exit(-1);
 	}
-	printf("Envío correcto\n");
-
 }
 
 void read_tcp_message(char *buffer) {
@@ -113,5 +109,5 @@ void read_tcp_message(char *buffer) {
 
     n = read(client,buffer,255);
     if (n < 0) error("ERROR reading from socket");
-    printf("%s\n",buffer);
+  //  printf("%s\n",buffer);
 }
