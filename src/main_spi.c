@@ -33,9 +33,9 @@ int main(void) {
         }
 
         while(1) {
-                transfer("LARRAITZ", 8, 0, 0);
+                transfer("E2801160200070DED90409A1", 24, 0, 0);
                 sleep(2);
-                readSPI(0,0, buffRX,8);
+                readSPI(0,0, buffRX,24);
 //              printf("Buff: %s\n", buffRX);
                 sleep(2);
                 memset(buffRX, 0, sizeof(buffRX));

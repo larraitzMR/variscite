@@ -47,7 +47,8 @@ int main(void) {
 	static const char *device = "/dev/spidev2.0";
 
 	char msg[200];
-	char buffRX[100];
+	char buffRX[50];
+	char EPCtoSend[50];
 
     //Configure SPUI
 	fd_stmf4 = openspi(device, 115200);
@@ -58,9 +59,9 @@ int main(void) {
 	}
 
 	lora_fd = create_tcp_conection(5554) ;
+	//send_tcp_message("CONECTED");
 
 	int isNodo = 0;
-
 
 	while(1){
 	   	read_tcp_message(msg);
@@ -69,17 +70,30 @@ int main(void) {
 			char* mens = strtok(msg, " ");
 			char* mode = strtok(NULL, " ");
 			if(strncmp(mode, "NODO",4) == 0){
-				printf("is NODO\n");
+				//printf("is NODO\n");
 				isNodo = 1;
 			}  else {
-				printf("is GATEWAY\n");
+				//printf("is GATEWAY\n");
 				isNodo = 0;
 			}
-			transfer(mode, 8, 0, 0);
+			//transfer(mode, 8, 0, 0);
+		} else if (strncmp(msg, "SEND_EPC", 8) == 0){
+			printf("msg: %s\n", msg);
+			char* mens = strtok(msg, " ");
+			char* epc = strtok(NULL, " ");
+			sprintf(EPCtoSend, "%s", epc);
+			printf("EPCtoSend: %s", EPCtoSend);
 		}
-		if (isNodo == 0) { //Es gateway
-			transfer(0,0,buffRX, sizeof(buffRX));
-		} else {
+		if (isNodo == 0) { //Es GATEWAY, SOLO recibir del ST
+			//transfer(0,0,buffRX, sizeof(buffRX));
+			//printf("ESTAMOS EN GATEWAY\n");
+			transfer("E28011606000020D0EC820DE",24, 0,0);
+          	//printf("Buff: %s\n", buffRX);
+        	sleep(2);
+        	readSPI(0,0, buffRX,24);
+			//send_tcp_message("buffRX");
+		} else { //Es NODO, enviar por LORA
+			printf("ESTAMOS EN NODO\n");
 			transfer("E28011606000020D0EC820DE", 24, 0, 0);
 			sleep(2);
 	        memset(buffRX, 0, sizeof(buffRX));
@@ -116,6 +130,9 @@ int main(void) {
 	fflush(stdout);
 	memset(msg, 0, sizeof(msg));
 
+	//mirar senal SIGINT para cerrar los sockets
+	//close_tcp_connection();
+	closespi();
 	return EXIT_SUCCESS;
 
 } // MAIN END

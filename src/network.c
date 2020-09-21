@@ -92,9 +92,15 @@ int create_tcp_conection(int portNum) {
 	return server;
 }
 
+void close_tcp_connection(){
+	close(server);
+	close(client);
+}
+
 void send_tcp_message(char *data){
 
 	/* Envía un saludo (greeting) al cliente. */
+	//if((sendrc =  write(client, data, sizeof(data)))<0)
 	if((sendrc = send(client, data, strlen(data),0))<0)
 	{
 	  printf("Envío fallido\n");
