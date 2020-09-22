@@ -47,8 +47,9 @@ int main(void) {
 	static const char *device = "/dev/spidev2.0";
 
 	char msg[200];
-	char buffRX[50];
+	char buffRX[25];
 	char EPCtoSend[50];
+	char buffTCP[25];
 
     //Configure SPUI
 	fd_stmf4 = openspi(device, 115200);
@@ -59,9 +60,12 @@ int main(void) {
 	}
 
 	lora_fd = create_tcp_conection(5554) ;
-	//send_tcp_message("CONECTED");
+	//send_tcp_message("CONECTED\n");
 
 	int isNodo = 0;
+	memset(buffTCP, 0, sizeof(buffTCP));
+	memset(buffRX, 0, sizeof(buffRX));
+
 
 	while(1){
 	   	read_tcp_message(msg);
@@ -91,14 +95,16 @@ int main(void) {
           	//printf("Buff: %s\n", buffRX);
         	sleep(2);
         	readSPI(0,0, buffRX,24);
-			//send_tcp_message("buffRX");
+        	printf("%s\n", buffRX);
+        	sprintf(buffTCP,"%s\n", buffRX);
+        	//printf("%s\n", buffTCP);
+			send_tcp_message(buffTCP);
 		} else { //Es NODO, enviar por LORA
 			printf("ESTAMOS EN NODO\n");
 			transfer("E28011606000020D0EC820DE", 24, 0, 0);
 			sleep(2);
 	        memset(buffRX, 0, sizeof(buffRX));
 		}
-
 		/*
 		} else if (strncmp(msg, "GATEWAY", 7) == 0) {
 			//intercambio de datos entre el ST y variscite
